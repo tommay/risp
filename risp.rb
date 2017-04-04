@@ -3,7 +3,7 @@
 require "hamster/hash"
 require "byebug"
 
-module Lisp
+module Risp
   module Atom
   end
 
@@ -27,7 +27,7 @@ module Lisp
     end
 
     def eval(bindings)
-      bindings.get(self) || Lisp.global_bindings.get(self) or
+      bindings.get(self) || Risp.global_bindings.get(self) or
         raise "No binding for #{self}"
     end
 
@@ -86,7 +86,7 @@ module Lisp
           car.to_s
         end +
         case
-        when cdr == Lisp::Qnil
+        when cdr == Risp::Qnil
           ")"
         when cdr.is_a?(Cell)
           cdr.to_s(" ")
@@ -375,11 +375,11 @@ class Repl
     result =
       case token
       when "("
-        parse_list(source, Lisp::Qnil)
+        parse_list(source, Risp::Qnil)
       when /^[0-9]+$/
-        Lisp::Number.new(token)
+        Risp::Number.new(token)
       else
-        Lisp::Symbol.intern(token)
+        Risp::Symbol.intern(token)
       end
     token = source.next
     if token != :eof
@@ -392,24 +392,24 @@ class Repl
     token = source.next
     case token
     when "("
-      sublist = parse_list(source, Lisp::Qnil)
-      parse_list(source, Lisp::Cell.new(sublist, list))
+      sublist = parse_list(source, Risp::Qnil)
+      parse_list(source, Risp::Cell.new(sublist, list))
     when ")"
       reverse(list)
     when /^[0-9]+$/
-      number = Lisp::Number.new(token)
-      parse_list(source, Lisp::Cell.new(number, list))
+      number = Risp::Number.new(token)
+      parse_list(source, Risp::Cell.new(number, list))
     else
-      symbol = Lisp::Symbol.intern(token)
-      parse_list(source, Lisp::Cell.new(symbol, list))
+      symbol = Risp::Symbol.intern(token)
+      parse_list(source, Risp::Cell.new(symbol, list))
     end
   end
 
-  def self.reverse(list, result = Lisp::Qnil)
-    if list == Lisp::Qnil
+  def self.reverse(list, result = Risp::Qnil)
+    if list == Risp::Qnil
       result
     else
-      reverse(list.cdr, Lisp::Cell.new(list.car, result))
+      reverse(list.cdr, Risp::Cell.new(list.car, result))
     end
   end
 
