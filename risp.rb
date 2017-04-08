@@ -246,7 +246,7 @@ module Risp
       bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
         memo.bind(symbol, val)
       end
-      eval(@form, bindings)
+      Risp.eval(@form, bindings)
     end
 
     def to_s
