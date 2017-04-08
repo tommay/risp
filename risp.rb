@@ -5,6 +5,14 @@ require "byebug"
 
 module Risp
   module Atom
+    def self.new(string)
+      case string
+      when /^[0-9]+$/
+        Risp::Number.new(string)
+      else
+        Risp::Symbol.intern(string)
+      end
+    end
   end
 
   class Symbol
@@ -376,10 +384,8 @@ class Lepr
       case token
       when "("
         parse_list(source, Risp::Qnil)
-      when /^[0-9]+$/
-        Risp::Number.new(token)
       else
-        Risp::Symbol.intern(token)
+        Risp::Atom.new(token)
       end
     token = source.next
     if token != :eof
@@ -396,12 +402,9 @@ class Lepr
       parse_list(source, Risp::Cell.new(sublist, list))
     when ")"
       reverse(list)
-    when /^[0-9]+$/
-      number = Risp::Number.new(token)
-      parse_list(source, Risp::Cell.new(number, list))
     else
-      symbol = Risp::Symbol.intern(token)
-      parse_list(source, Risp::Cell.new(symbol, list))
+      atom = Risp::Atom.new(token)
+      parse_list(source, Risp::Cell.new(atom, list))
     end
   end
 
