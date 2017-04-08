@@ -109,6 +109,26 @@ module Risp
     end
   end
 
+  class Closure
+    def initialize(symbol_array, form, bindings)
+      @symbol_array = symbol_array
+      @form = form
+      @bindings = bindings
+    end
+
+    def eval(arg_list)
+      args = Risp::to_array(arg_list, @symbol_array.length)
+      bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
+        memo.bind(symbol, val)
+      end
+      Risp.eval(@form, bindings)
+    end
+
+    def to_s
+      @symbol_array.map(&:to_s).join(" ") + " => " + @form.to_s
+    end
+  end
+
   class Bindings
     def initialize(hash = Hamster::Hash.new)
       @hash = hash
@@ -234,30 +254,6 @@ module Risp
     Closure.new(symbol_array, form, bindings)
   end
 
-  class Closure
-    def initialize(symbol_array, form, bindings)
-      @symbol_array = symbol_array
-      @form = form
-      @bindings = bindings
-    end
-
-    def eval(arg_list)
-      args = Risp::to_array(arg_list, @symbol_array.length)
-      bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
-        memo.bind(symbol, val)
-      end
-      Risp.eval(@form, bindings)
-    end
-
-    def to_s
-      @symbol_array.map(&:to_s).join(" ") + " => " + @form.to_s
-    end
-  end
-
-  def self.to_boolean(arg)
-    arg ? Qt : Qnil
-  end
-
   subr("null?", 1) do |arg|
     to_boolean(arg == Qnil)
   end
@@ -272,22 +268,6 @@ module Risp
 
   subr("list?", 1) do |arg|
     to_boolean(arg == Qnil || arg.is_a?(Cell))
-  end
-
-  def self.to_array(list, length = nil)
-    init_list = list
-    [].tap do |result|
-      while cons?(list) == Qt
-        result << car(list)
-        list = cdr(list)
-      end
-      if list != Qnil
-        raise Risp::Exception.new("Expected proper list, got #{init_list}")
-      end
-      if length && result.length != length
-        raise Risp::Exception.new("Expected #{length} arguments, got #{result.length}")
-      end
-    end
   end
 
   subr("apply", 2) do |fn, args, bindings|
@@ -361,6 +341,32 @@ module Risp
     end
   end
 
+  subr("map", 2) do |fn, list, bindings|
+    map_block(list) do |element|
+      apply(fn, element, bindings)
+    end
+  end
+
+  def self.to_boolean(arg)
+    arg ? Qt : Qnil
+  end
+
+  def self.to_array(list, length = nil)
+    init_list = list
+    [].tap do |result|
+      while cons?(list) == Qt
+        result << car(list)
+        list = cdr(list)
+      end
+      if list != Qnil
+        raise Risp::Exception.new("Expected proper list, got #{init_list}")
+      end
+      if length && result.length != length
+        raise Risp::Exception.new("Expected #{length} arguments, got #{result.length}")
+      end
+    end
+  end
+
   def self.map_block(list, &block)
     if list == Qnil
       Qnil
@@ -372,12 +378,6 @@ module Risp
   def self.eval_list(list, bindings)
     map_block(list) do |element|
       eval(element, bindings)
-    end
-  end
-
-  subr("map", 2) do |fn, list, bindings|
-    map_block(list) do |element|
-      apply(fn, element, bindings)
     end
   end
 
