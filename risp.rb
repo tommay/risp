@@ -140,12 +140,19 @@ module Risp
   end
 
   module Builtin
-    def initialize(&block)
+    def initialize(name, nargs, &block)
+      @name = name
+      @nargs = nargs
       @block = block
     end
 
     def eval(args, bindings)
-      @block.call(args, bindings)
+      if @nargs
+        array = Risp::to_array(args, @nargs)
+        @block.call(*array, bindings)
+      else
+        @block.call(args, bindings)
+      end
     end
   end
 
@@ -173,44 +180,41 @@ module Risp
   Qt = Symbol.intern("t")
   global(Qt, Qt)
 
-  def self.fsubr(name, f_name = name, &block)
-    global(Symbol.intern(name), Fsubr.new(&block))
+  def self.fsubr(name, nargs = nil, f_name = name, &block)
+    global(Symbol.intern(name), Fsubr.new(name, nargs, &block))
     define_singleton_method(f_name.to_sym, &block)
   end
 
-  def self.subr(name, f_name = name, &block)
-    global(Symbol.intern(name), Subr.new(&block))
+  def self.subr(name, nargs = nil, f_name = name, &block)
+    global(Symbol.intern(name), Subr.new(name, nargs, &block))
     define_singleton_method(f_name.to_sym, &block)
   end
 
-  fsubr("quote") do |args|
-    to_array(args, 1).first
+  fsubr("quote", 1) do |arg|
+    arg
   end
   
-  subr("eq") do |args|
-    (x, y) = to_array(args(2))
+  subr("eq", 2) do |x, y|
     to_boolean(x.is_a?(Atom) && y.is_a?(Atom) && x.eq(y))
   end
 
-  subr("car") do |args|
-    if args.is_a?(Cell)
-      args.car
+  subr("car", 1) do |arg|
+    if arg.is_a?(Cell)
+      arg.car
     else
-      raise "Bad arg to car: #{args}"
+      raise "Bad arg to car: #{arg}"
     end
   end
 
-  subr("cdr") do |args|
-    if args.is_a?(Cell)
-      args.cdr
+  subr("cdr", 1) do |arg|
+    if arg.is_a?(Cell)
+      arg.cdr
     else
-      raise "Bad arg to cdr: #{args}"
+      raise "Bad arg to cdr: #{arg}"
     end
   end
 
-  # XXX the args will already be a cons.
-  subr("cons") do |args|
-    (x, y) = to_array(args, 2)
+  subr("cons", 2) do |x, y|
     Cell.new(x, y)
   end
 
@@ -225,9 +229,8 @@ module Risp
     end
   end
 
-  fsubr("lambda") do |args, bindings|
-    symbol_array = to_array(car(args))
-    form = cdr(args)
+  fsubr("lambda", 2) do |symbols, form, bindings|
+    symbol_array = to_array(symbols)
     Closure.new(symbol_array, form, bindings)
   end
 
@@ -255,20 +258,20 @@ module Risp
     arg ? Qt : Qnil
   end
 
-  subr("null?") do |args|
-    to_boolean(args == Qnil)
+  subr("null?", 1) do |arg|
+    to_boolean(arg == Qnil)
   end
 
-  subr("atom?") do |args|
-    to_boolean(args.is_a?(Atom))
+  subr("atom?", 1) do |arg|
+    to_boolean(arg.is_a?(Atom))
   end
 
-  subr("cons?") do |args|
-    to_boolean(args.is_a?(Cell))
+  subr("cons?", 1) do |arg|
+    to_boolean(arg.is_a?(Cell))
   end
 
-  subr("list?") do |args|
-    to_boolean(args == Qnil || args.is_a?(Cell))
+  subr("list?", 1) do |arg|
+    to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
   def self.to_array(list, length = nil)
@@ -287,34 +290,33 @@ module Risp
     end
   end
 
-  subr("apply") do |args, bindings|
-    (fn, fn_args) = to_array(args, 2)
+  subr("apply", 2) do |fn, args, bindings|
     case fn
     when Fsubr
-      fn.eval(fn_args, bindings)
+      fn.eval(args, bindings)
     when Subr
-      fn.eval(eval_list(fn_args, bindings), bindings)
+      fn.eval(eval_list(args, bindings), bindings)
     when Closure
-      fn.eval(eval_list(fn_args, bindings))
+      fn.eval(eval_list(args, bindings))
     else
       raise "Don't know how to apply #{fn}"
     end
   end
 
-  subr("eval") do |expr, bindings = Bindings.new|
+  subr("eval", 1) do |expr, bindings = Bindings.new|
     case expr
     when Atom
       expr.eval(bindings)
     when Cell
       fn = eval(expr.car, bindings)
       args = expr.cdr
-      apply(Cell.new(fn, Cell.new(args, Qnil)), bindings)
+      apply(fn, args, bindings)
     else
       raise "Don't know how to eval #{expr}"
     end
   end
 
-  fsubr("and", :f_and) do |args, bindings|
+  fsubr("and", nil, :f_and) do |args, bindings|
     case
     when args == Qnil
       Qt
@@ -329,7 +331,7 @@ module Risp
     end
   end
 
-  fsubr("or", :f_or) do |args, bindings|
+  fsubr("or", nil, :f_or) do |args, bindings|
     case
     when args == Qnil
       Qnil
@@ -363,7 +365,7 @@ module Risp
     if list == Qnil
       Qnil
     else
-      Cell.new(block.call(car(list)), map_block(cdr(list), &block))
+      cons(block.call(car(list)), map_block(cdr(list), &block))
     end
   end
 
@@ -373,10 +375,9 @@ module Risp
     end
   end
 
-  subr("map") do |args, bindings|
-    (fn, list) = to_array(args, 2)
+  subr("map", 2) do |fn, list, bindings|
     map_block(list) do |element|
-      apply(Cell.new(fn, Cell.new(element, Qnil)), bindings)
+      apply(fn, element, bindings)
     end
   end
 end
@@ -415,12 +416,12 @@ class Lepr
     case token
     when "("
       sublist = parse_list(source, Risp::Qnil)
-      parse_list(source, Risp::Cell.new(sublist, list))
+      parse_list(source, Risp::cons(sublist, list))
     when ")"
       reverse(list)
     else
       atom = Risp::Atom.new(token)
-      parse_list(source, Risp::Cell.new(atom, list))
+      parse_list(source, Risp::cons(atom, list))
     end
   end
 
@@ -428,7 +429,7 @@ class Lepr
     if list == Risp::Qnil
       result
     else
-      reverse(list.cdr, Risp::Cell.new(list.car, result))
+      reverse(list.cdr, Risp::cons(list.car, result))
     end
   end
 
