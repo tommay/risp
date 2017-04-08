@@ -368,7 +368,7 @@ module Risp
   end
 end
 
-class Repl
+class Lepr
   def self.parse(string)
     source = Lexer.new(string)
     token = source.next
