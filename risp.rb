@@ -170,7 +170,7 @@ module Risp
   Qnil = Symbol.intern("nil")
   global(Qnil, Qnil)
 
-  Qt = Symbol.new("t")
+  Qt = Symbol.intern("t")
   global(Qt, Qt)
 
   def self.fsubr(name, f_name = name, &block)
