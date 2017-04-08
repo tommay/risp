@@ -343,7 +343,7 @@ module Risp
 
   subr("map", 2) do |fn, list, bindings|
     map_block(list) do |element|
-      apply(fn, element, bindings)
+      apply(fn, cons(element, Qnil), bindings)
     end
   end
 
