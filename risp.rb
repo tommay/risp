@@ -406,24 +406,33 @@ class Lepr
 
   def self.parse(string)
     source = Lexer.new(string)
-    token = source.next
-    result =
-      case token
-      when "("
-        parse_list(source, Risp::Qnil)
-      else
-        Risp::Atom.new(token)
+    parse_expr(source).tap do |blah|
+      token = source.next
+      if token != :eof
+        raise Risp::Exception.new("Expected EOF, got #{token}")
       end
-    token = source.next
-    if token != :eof
-      raise Risp::Exception.new("Expected EOF, got #{token}")
     end
-    result
+  end
+
+  def self.parse_expr(source)
+    token = source.next
+    case token
+    when "'"
+      to_list(Risp::Symbol.intern("quote"),
+              parse_expr(source))
+    when "("
+      parse_list(source, Risp::Qnil)
+    else
+      Risp::Atom.new(token)
+    end
   end
 
   def self.parse_list(source, list)
     token = source.next
     case token
+    when "'"
+      quoted = to_list(Risp::Symbol.intern("quote"), parse_expr(source))
+      parse_list(source, Risp::cons(quoted, list))
     when "("
       sublist = parse_list(source, Risp::Qnil)
       parse_list(source, Risp::cons(sublist, list))
@@ -432,6 +441,12 @@ class Lepr
     else
       atom = Risp::Atom.new(token)
       parse_list(source, Risp::cons(atom, list))
+    end
+  end
+
+  def self.to_list(*elements)
+    elements.reverse.reduce(Risp::Qnil) do |memo, element|
+      Risp::cons(element, memo)
     end
   end
 
@@ -446,7 +461,7 @@ class Lepr
   class Lexer
     def self.new(string)
       Enumerator.new do |y|
-        string.scan(/\s*(\(|\)|[^()\s]+)/) do |(token)|
+        string.scan(/\s*([()']|[^()'\s]+)/) do |(token)|
           y << token
         end
         y << :eof
