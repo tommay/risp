@@ -41,7 +41,7 @@ module Risp
 
     def eval(bindings)
       bindings.get(self) || Risp.global_bindings.get(self) or
-        raise "No binding for #{self}"
+        raise Risp::Exception.new("No binding for #{self}")
     end
 
     def eq(other)
@@ -202,7 +202,7 @@ module Risp
     if arg.is_a?(Cell)
       arg.car
     else
-      raise "Bad arg to car: #{arg}"
+      raise Risp::Exception.new("Bad arg to car: #{arg}")
     end
   end
 
@@ -210,7 +210,7 @@ module Risp
     if arg.is_a?(Cell)
       arg.cdr
     else
-      raise "Bad arg to cdr: #{arg}"
+      raise Risp::Exception.new("Bad arg to cdr: #{arg}")
     end
   end
 
@@ -282,10 +282,10 @@ module Risp
         list = cdr(list)
       end
       if list != Qnil
-        raise "Expected proper list, got #{init_list}"
+        raise Risp::Exception.new("Expected proper list, got #{init_list}")
       end
       if length && result.length != length
-        raise "Expected #{length} arguments, got #{result.length}"
+        raise Risp::Exception.new("Expected #{length} arguments, got #{result.length}")
       end
     end
   end
@@ -299,7 +299,7 @@ module Risp
     when Closure
       fn.eval(eval_list(args, bindings))
     else
-      raise "Don't know how to apply #{fn}"
+      raise Risp::Exception.new("Don't know how to apply #{fn}")
     end
   end
 
@@ -312,7 +312,7 @@ module Risp
       args = expr.cdr
       apply(fn, args, bindings)
     else
-      raise "Don't know how to eval #{expr}"
+      raise Risp::Exception.new("Don't know how to eval #{expr}")
     end
   end
 
@@ -327,7 +327,7 @@ module Risp
         f_and(args.cdr, bindings)
       end
     else
-      raise "Can't do \"and\" with #{args}"
+      raise Risp::Exception.new("Can't do \"and\" with #{args}")
     end
   end
 
@@ -342,7 +342,7 @@ module Risp
         f_or(args.cdr, bindings)
       end
     else
-      raise "Can't apply \"and\" to #{args}"
+      raise Risp::Exception.new("Can't apply \"and\" to #{args}")
     end
   end
 
@@ -354,10 +354,10 @@ module Risp
       if args.car.is_a?(Number)
         args.car.val + send(:+, args.cdr)
       else
-        raise "Can't apply \"+\" to #{args.car}"
+        raise Risp::Exception.new("Can't apply \"+\" to #{args.car}")
       end
     else
-      raise "Can't apply \"+\" to #{args}"
+      raise Risp::Exception.new("Can't apply \"+\" to #{args}")
     end
   end
 
@@ -380,6 +380,16 @@ module Risp
       apply(fn, element, bindings)
     end
   end
+
+  class Exception < ::Exception
+    def initialize(message)
+      @message = message
+    end
+
+    def to_s
+      @message
+    end
+  end
 end
 
 class Lepr
@@ -388,7 +398,7 @@ class Lepr
       begin
         expr = parse(line)
         puts Risp.eval(expr).to_s
-      rescue => ex
+      rescue Risp::Exception => ex
         puts ex
       end
     end
@@ -406,7 +416,7 @@ class Lepr
       end
     token = source.next
     if token != :eof
-      raise "Expected EOF, got #{token}"
+      raise Risp::Exception.new("Expected EOF, got #{token}")
     end
     result
   end
