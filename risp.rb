@@ -218,12 +218,12 @@ module Risp
     Cell.new(x, y)
   end
 
-  fsubr("cond") do |form, bindings|
+  fsubr("cond", 1) do |form, bindings|
     case
     when form == Qnil
       Qnil
     when eval(car(car(form)), bindings) != Qnil
-      eval(cdr(car(form)), bindings)
+      eval(car(cdr(car(form))), bindings)
     else
       cond(cdr(form), bindings)
     end
