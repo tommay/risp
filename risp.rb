@@ -250,7 +250,7 @@ module Risp
     end
 
     def to_s
-      @symbol_array.map(:to_s).join(" ") + " => " + @form.to_s
+      @symbol_array.map(&:to_s).join(" ") + " => " + @form.to_s
     end
   end
 
