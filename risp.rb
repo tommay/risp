@@ -184,7 +184,7 @@ module Risp
   end
 
   fsubr("quote") do |args|
-    args
+    car(args)
   end
   
   subr("eq") do |args|
