@@ -317,7 +317,7 @@ module Risp
   fsubr("and", :f_and) do |args, bindings|
     case
     when args == Qnil
-      Qnil
+      Qt
     when args.is_a?(Cell)
       if eval(args.car, bindings) == Qnil
         Qnil
@@ -332,7 +332,7 @@ module Risp
   fsubr("or", :f_or) do |args, bindings|
     case
     when args == Qnil
-      Qt
+      Qnil
     when args.is_a?(Cell)
       if eval(args.car, bindings) == Qt
         Qt
