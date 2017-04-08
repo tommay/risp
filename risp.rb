@@ -4,6 +4,10 @@ require "hamster/hash"
 require "readline"
 require "byebug"
 
+at_exit do
+  Lepr.repl
+end
+
 module Risp
   module Atom
     def self.new(string)
