@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "hamster/hash"
+require "readline"
 require "byebug"
 
 module Risp
@@ -296,7 +297,7 @@ module Risp
     end
   end
 
-  subr("eval") do |expr, bindings|
+  subr("eval") do |expr, bindings = Bindings.new|
     case expr
     when Atom
       expr.eval(bindings)
@@ -377,6 +378,17 @@ module Risp
 end
 
 class Lepr
+  def self.repl
+    while line = Readline.readline('> ', true)
+      begin
+        expr = parse(line)
+        puts Risp.eval(expr).to_s
+      rescue => ex
+        puts ex
+      end
+    end
+  end
+
   def self.parse(string)
     source = Lexer.new(string)
     token = source.next
@@ -427,4 +439,3 @@ class Lepr
     end
   end
 end
-
