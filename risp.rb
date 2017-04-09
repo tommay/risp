@@ -301,8 +301,12 @@ module Risp
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      if eval(args.car, bindings) == Qnil
+      val = eval(args.car, bindings)
+      case
+      when val == Qnil
         Qnil
+      when args.cdr == Qnil
+        val
       else
         f_and(args.cdr, bindings)
       end
@@ -316,8 +320,9 @@ module Risp
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      if eval(args.car, bindings) == Qt
-        Qt
+      val = eval(args.car, bindings)
+      if val != Qnil
+        val
       else
         f_or(args.cdr, bindings)
       end
