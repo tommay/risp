@@ -529,11 +529,9 @@ module Risp
     end
   end
 
-  def self.reverse(list, result = Risp::Qnil)
-    if list == Qnil
-      result
-    else
-      reverse(list.cdr, cons(list.car, result))
+  def self.reverse(list)
+    fold_block(Qnil, list) do |memo, element|
+      cons(element, memo)
     end
   end
 
