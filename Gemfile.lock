@@ -5,6 +5,7 @@ GEM
     concurrent-ruby (1.0.5)
     hamster (3.0.0)
       concurrent-ruby (~> 1.0)
+    readline-history-restore (0.0.1)
 
 PLATFORMS
   ruby
@@ -12,6 +13,7 @@ PLATFORMS
 DEPENDENCIES
   byebug
   hamster
+  readline-history-restore
 
 BUNDLED WITH
    1.14.4
