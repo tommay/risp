@@ -444,6 +444,23 @@ module Risp
     eval(form, new_bindings)
   end
 
+  fsubr("define", 2) do |args, form, bindings|
+    case args
+    when Symbol
+      eval(form, bindings).tap do |val|
+        global(args, val)
+      end
+    when Cell
+      name = args.car
+      symbols = args.cdr
+      lambda(symbols, form, bindings).tap do |closure|
+        global(name, closure)
+      end
+    else
+      raise Risp::Exception.new("Can't define #{args}")
+    end
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
