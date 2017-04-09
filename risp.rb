@@ -347,6 +347,10 @@ module Risp
     end
   end
 
+  subr("list", nil) do |list|
+    list
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
