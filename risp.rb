@@ -351,6 +351,34 @@ module Risp
     list
   end
 
+  fsubr("letrec", 2) do |bind_list, form, bindings|
+    bind_array = Risp::to_array(bind_list)
+
+    # Create the new bindings with the names initially unbound.  This sucks.
+    # We need to do this because we can't bake the bindings into Closures
+    # until we've added the names to them, but we can't bind the values
+    # until we have the Closures.
+
+    new_bindings = bind_array.reduce(bindings) do |memo, e|
+      symbol, expr = to_array(e, 2)
+      bindings.bind(symbol)
+    end
+
+    # Now bind to the names.  each is a non-functional side-effect thing.
+
+    bind_array.each do |e|
+      symbol, expr = to_array(e, 2)
+      # Now we can bake the bindings into any closures.
+      val = eval(expr, new_bindings)
+      # And finally bind the symbol to its closure.
+      new_bindings.set(symbol, val)
+    end
+      
+    # Finally evaluate the form with the letrec bindings.
+
+    eval(form, new_bindings)
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
