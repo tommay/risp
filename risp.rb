@@ -56,8 +56,16 @@ module Risp
   class Number
     include Atom
 
-    def initialize(string)
-      @val = string.to_i
+    def initialize(thing)
+      @val =
+        case thing
+        when Numeric
+          thing
+        when String
+          thing.to_i
+        else
+          raise "Bad arg to Numnber.new: #{thing}"
+        end
     end
 
     def val
@@ -66,6 +74,14 @@ module Risp
 
     def eval(bindings)
       self
+    end
+
+    def +(other)
+      if other.is_a?(Number)
+        Number.new(self.val + other.val)
+      else
+        raise Risp::Exception.new("Can't apply \"+\" to #{other}")
+      end
     end
 
     def eq(other)
@@ -331,13 +347,19 @@ module Risp
     end
   end
 
-  subr("+") do |args|
+  subr("+") do |list|
+    fold_block(Number.new(0), list) do |memo, arg|
+      memo + arg
+    end
+  end
+
+  subr("-") do |args|
     case
     when args == Qnil
       0
     when args.is_a?(Cell)
       if args.car.is_a?(Number)
-        args.car.val + send(:+, args.cdr)
+        args.car.val - send(:+, args.cdr)
       else
         raise Risp::Exception.new("Can't apply \"+\" to #{args.car}")
       end
@@ -431,6 +453,18 @@ module Risp
       if length && result.length != length
         raise Risp::Exception.new("Expected #{length} arguments, got #{result.length}")
       end
+    end
+  end
+
+  def self.fold_block(memo, list, &block)
+    case list
+    when Qnil
+      memo
+    when Cell
+      new_memo = block.call(memo, list.car)
+      fold_block(new_memo, list.cdr, &block)
+    else
+      raise Risp::Exception("Can't fold #{list}")
     end
   end
 
