@@ -489,17 +489,11 @@ module Risp
   end
 
   def self.to_array(list, length = nil)
-    init_list = list
-    [].tap do |result|
-      while cons?(list) == Qt
-        result << car(list)
-        list = cdr(list)
-      end
-      if list != Qnil
-        raise Risp::Exception.new("Expected proper list, got #{init_list}")
-      end
-      if length && result.length != length
-        raise Risp::Exception.new("Expected #{length} arguments, got #{result.length}")
+    fold_block([], list) do |memo, element|
+      memo << element
+    end.tap do |array|
+      if length && array.length != length
+        raise Risp::Exception.new("Expected #{length} arguments, got #{array.length}")
       end
     end
   end
