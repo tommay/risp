@@ -443,7 +443,7 @@ module Risp
 
     new_bindings = bind_array.reduce(bindings) do |memo, e|
       symbol, expr = to_array(e, 2)
-      bindings.bind(symbol)
+      memo.bind(symbol)
     end
 
     # Now bind to the names.  each is a non-functional side-effect thing.
