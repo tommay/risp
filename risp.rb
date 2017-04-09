@@ -286,6 +286,7 @@ module Risp
 
   fsubr("lambda", 2) do |symbols, form, bindings|
     symbol_array = to_array(symbols)
+    check_symbols(symbol_array)
     Closure.new(symbol_array, form, bindings)
   end
 
@@ -412,6 +413,12 @@ module Risp
   fsubr("let", 2) do |bind_list, form, bindings|
     bind_array = Risp::to_array(bind_list)
 
+    check_symbols(
+      bind_array.map do |e|
+        symbol, expr = to_array(e, 2)
+        symbol
+      end)
+
     new_bindings = bind_array.reduce(bindings) do |memo, e|
       symbol, expr = to_array(e, 2)
       val = eval(expr, bindings)
@@ -424,6 +431,12 @@ module Risp
   fsubr("let*", 2) do |bind_list, form, bindings|
     bind_array = Risp::to_array(bind_list)
 
+    check_symbols(
+      bind_array.map do |e|
+        symbol, expr = to_array(e, 2)
+        symbol
+      end)
+
     new_bindings = bind_array.reduce(bindings) do |memo, e|
       symbol, expr = to_array(e, 2)
       val = eval(expr, memo)
@@ -435,6 +448,12 @@ module Risp
 
   fsubr("letrec", 2) do |bind_list, form, bindings|
     bind_array = Risp::to_array(bind_list)
+
+    check_symbols(
+      bind_array.map do |e|
+        symbol, expr = to_array(e, 2)
+        symbol
+      end)
 
     # Create the new bindings with the names initially unbound.  This sucks.
     # We need to do this because we can't bake the bindings into Closures
@@ -526,6 +545,18 @@ module Risp
   def self.reverse(list)
     fold_block(Qnil, list) do |memo, element|
       cons(element, memo)
+    end
+  end
+
+  def self.check_symbols(array)
+    nonsymbols = array.select{|x| !x.is_a?(Symbol)}
+    case nonsymbols.length
+    when 0
+      # Ok
+    when 1
+      raise Risp::Exception.new("Not a symbol: #{nonsymbols.first}")
+    else
+      raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:to_s).join(" ")}")
     end
   end
 
