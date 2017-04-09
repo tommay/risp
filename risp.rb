@@ -84,6 +84,14 @@ module Risp
       end
     end
 
+    def -(other)
+      if other.is_a?(Number)
+        Number.new(self.val - other.val)
+      else
+        raise Risp::Exception.new("Can't apply \"-\" to #{other}")
+      end
+    end
+
     def eq(other)
       other.is_a?(Number) && self.val == other.val
     end
@@ -353,18 +361,24 @@ module Risp
     end
   end
 
-  subr("-") do |args|
-    case
-    when args == Qnil
-      0
-    when args.is_a?(Cell)
-      if args.car.is_a?(Number)
-        args.car.val - send(:+, args.cdr)
+  subr("-") do |list|
+    case list
+    when Cell
+      val = list.car
+      case val
+      when Number
+        if list.cdr == Qnil
+          Number.new(-val.val)
+        else
+          fold_block(val, list.cdr) do |memo, arg|
+            memo - arg
+          end
+        end
       else
-        raise Risp::Exception.new("Can't apply \"+\" to #{args.car}")
+        raise Risp::Exception.new("Can't apply \"-\" to #{val}")
       end
     else
-      raise Risp::Exception.new("Can't apply \"+\" to #{args}")
+      raise Risp::Exception.new("Can't apply \"-\" to #{list}")
     end
   end
 
@@ -464,7 +478,7 @@ module Risp
       new_memo = block.call(memo, list.car)
       fold_block(new_memo, list.cdr, &block)
     else
-      raise Risp::Exception("Can't fold #{list}")
+      raise Risp::Exception.new("Can't fold #{list}")
     end
   end
 
