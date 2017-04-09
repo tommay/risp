@@ -92,6 +92,14 @@ module Risp
       end
     end
 
+    def *(other)
+      if other.is_a?(Number)
+        Number.new(self.val * other.val)
+      else
+        raise Risp::Exception.new("Can't apply \"*\" to #{other}")
+      end
+    end
+
     def eq(other)
       other.is_a?(Number) && self.val == other.val
     end
@@ -379,6 +387,12 @@ module Risp
       end
     else
       raise Risp::Exception.new("Can't apply \"-\" to #{list}")
+    end
+  end
+
+  subr("*") do |list|
+    fold_block(Number.new(1), list) do |memo, arg|
+      memo * arg
     end
   end
 
