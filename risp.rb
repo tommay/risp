@@ -343,12 +343,18 @@ module Risp
 
   subr("map", 2) do |fn, list, bindings|
     map_block(list) do |element|
-      apply(fn, cons(element, Qnil), bindings)
+      apply(fn, to_list(element), bindings)
     end
   end
 
   def self.to_boolean(arg)
     arg ? Qt : Qnil
+  end
+
+  def self.to_list(*elements)
+    elements.reverse.reduce(Risp::Qnil) do |memo, element|
+      cons(element, memo)
+    end
   end
 
   def self.to_array(list, length = nil)
@@ -418,8 +424,9 @@ class Lepr
     token = source.next
     case token
     when "'"
-      to_list(Risp::Symbol.intern("quote"),
-              parse_expr(source))
+      Risp::to_list(
+        Risp::Symbol.intern("quote"),
+        parse_expr(source))
     when "("
       parse_list(source, Risp::Qnil)
     else
@@ -431,7 +438,9 @@ class Lepr
     token = source.next
     case token
     when "'"
-      quoted = to_list(Risp::Symbol.intern("quote"), parse_expr(source))
+      quoted = Risp::to_list(
+        Risp::Symbol.intern("quote"),
+        parse_expr(source))
       parse_list(source, Risp::cons(quoted, list))
     when "("
       sublist = parse_list(source, Risp::Qnil)
@@ -441,12 +450,6 @@ class Lepr
     else
       atom = Risp::Atom.new(token)
       parse_list(source, Risp::cons(atom, list))
-    end
-  end
-
-  def self.to_list(*elements)
-    elements.reverse.reduce(Risp::Qnil) do |memo, element|
-      Risp::cons(element, memo)
     end
   end
 
