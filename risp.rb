@@ -483,16 +483,23 @@ module Risp
   end
 
   def self.map_block(list, &block)
-    if list == Qnil
-      Qnil
-    else
-      cons(block.call(car(list)), map_block(cdr(list), &block))
+    mapped = fold_block(Qnil, list) do |memo, element|
+      cons(block.call(element), memo)
     end
+    reverse(mapped)
   end
 
   def self.eval_list(list, bindings)
     map_block(list) do |element|
       eval(element, bindings)
+    end
+  end
+
+  def self.reverse(list, result = Risp::Qnil)
+    if list == Qnil
+      result
+    else
+      reverse(list.cdr, cons(list.car, result))
     end
   end
 
@@ -555,18 +562,10 @@ class Lepr
       sublist = parse_list(source, Risp::Qnil)
       parse_list(source, Risp::cons(sublist, list))
     when ")"
-      reverse(list)
+      Risp::reverse(list)
     else
       atom = Risp::Atom.new(token)
       parse_list(source, Risp::cons(atom, list))
-    end
-  end
-
-  def self.reverse(list, result = Risp::Qnil)
-    if list == Risp::Qnil
-      result
-    else
-      reverse(list.cdr, Risp::cons(list.car, result))
     end
   end
 
