@@ -368,6 +368,18 @@ module Risp
     eval(form, new_bindings)
   end
 
+  fsubr("let*", 2) do |bind_list, form, bindings|
+    bind_array = Risp::to_array(bind_list)
+
+    new_bindings = bind_array.reduce(bindings) do |memo, e|
+      symbol, expr = to_array(e, 2)
+      val = eval(expr, memo)
+      memo.bind(symbol, val)
+    end
+
+    eval(form, new_bindings)
+  end
+
   fsubr("letrec", 2) do |bind_list, form, bindings|
     bind_array = Risp::to_array(bind_list)
 
