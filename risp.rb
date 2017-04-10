@@ -602,10 +602,14 @@ module Risp
   end
 
   def self.map_block(list, &block)
-    mapped = fold_block(Qnil, list) do |memo, element|
-      cons(block.call(element), memo)
+    case list
+    when Qnil
+      Qnil
+    when Cell
+      cons(block.call(list.car), map_block(list.cdr, &block))
+    else
+      raise Risp::Exception.new("Can't map #{list}")
     end
-    reverse(mapped)
   end
 
   def self.eval_list(list, bindings)
