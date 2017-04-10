@@ -19,3 +19,5 @@
    (t
     (filter pred (cdr lst)))))
 
+(define (evens)
+  (cons 0 (map (lambda (a) (+ a 2)) (evens))))
