@@ -472,12 +472,6 @@ module Risp
     end
   end
 
-  subr("map", 2) do |fn, list, bindings|
-    map_block(list) do |element|
-      apply(fn, to_list(element), bindings)
-    end
-  end
-
   subr("list", nil) do |list|
     list
   end
