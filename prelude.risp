@@ -1,0 +1,21 @@
+(define (map fn lst)
+  (cond
+   ((null? lst) nil)
+   (t
+    (cons (fn (car lst)) (map fn (cdr lst))))))
+
+(define (take n lst)
+  (cond
+   ((null? lst) nil)
+   ((eq n 0) nil)
+   (t
+    (cons (car lst) (take (- n 1) (cdr lst))))))
+
+(define (filter pred lst)
+  (cond
+   ((null? lst) nil)
+   ((pred (car lst))
+    (cons (car lst) (filter pred (cdr lst))))
+   (t
+    (filter pred (cdr lst)))))
+
