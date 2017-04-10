@@ -273,7 +273,7 @@ module Risp
     Cell.new(x, y)
   end
 
-  fsubr("cond", 1) do |form, bindings|
+  fsubr("cond") do |form, bindings|
     case
     when form == Qnil
       Qnil
