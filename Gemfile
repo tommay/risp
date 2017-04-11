@@ -4,5 +4,5 @@ gem "hamster"
 gem "readline-history-restore"
 
 group :development do
-  gem "byebug"
+  gem "pry-byebug"
 end

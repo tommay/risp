@@ -1,9 +1,10 @@
 #!/usr/bin/env ruby
 
+require "bundler/setup"
 require "hamster/hash"
 require "readline"
 require "readline/history/restore"
-require "byebug"
+require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
