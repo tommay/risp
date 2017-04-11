@@ -21,6 +21,10 @@ module Risp
         Risp::Symbol.intern(string)
       end
     end
+
+    def inspect
+      to_s
+    end
   end
 
   class Symbol
@@ -126,6 +130,23 @@ module Risp
       @cdr
     end
 
+    def inspect(ch = "(")
+      ch + 
+        if @car.is_a?(Cell)
+          @car.inspect("(")
+        else
+          @car.inspect
+        end +
+        case
+        when @cdr == Risp::Qnil
+          ")"
+        when @cdr.is_a?(Cell)
+          @cdr.inspect(" ")
+        else
+          " . " + @cdr.inspect + ")"
+        end
+    end
+
     def to_s(ch = "(")
       ch + 
         if car.is_a?(Cell)
@@ -159,8 +180,13 @@ module Risp
       Risp.eval(@form, bindings)
     end
 
-    def to_s
-      "[(" + @symbol_array.map(&:to_s).join(" ") + ") => " + @form.to_s + "]"
+    def inspect
+      to_s(:inspect)
+    end
+
+    def to_s(method = :to_s)
+      "[(" + @symbol_array.map(&method).join(" ") + ") => " +
+        @form.send(method) + "]"
     end
   end
 
@@ -187,6 +213,13 @@ module Risp
       end
     end
 
+    def inspect
+      vals = @hash.flatten(0).map do |k, v|
+        "#{k.inspect}: #{v.inspect}"
+      end
+      "{" + vals.join(", ") + "}"
+    end
+
     # This is for letrec where we have to set the value after the
     # binding is created.
     class Slot
@@ -208,6 +241,14 @@ module Risp
       else
         @block.call(args, bindings)
       end
+    end
+
+    def inspect
+      to_s
+    end
+
+    def to_s
+      "<#{self.class}: #{@name}>"
     end
   end
 
