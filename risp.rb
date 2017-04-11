@@ -67,7 +67,7 @@ module Risp
         when String
           thing.to_i
         else
-          raise "Bad arg to Numnber.new: #{thing}"
+          raise "Bad arg to Number.new: #{thing}"
         end
     end
 
