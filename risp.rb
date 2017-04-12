@@ -13,6 +13,20 @@ at_exit do
 end
 
 module Risp
+  @indent = ""
+  def self.trace(string_proc, &block)
+    indent = @indent
+    puts "#{indent}#{string_proc.call} {"
+    @indent += "  "
+    begin
+      block.call.tap do |result|
+        puts "#{indent}} => #{result.inspect}"
+      end
+    ensure
+      @indent = indent
+    end
+  end
+
   module Atom
     def self.new(string)
       case string
@@ -48,8 +62,10 @@ module Risp
     end
 
     def eval(bindings)
-      bindings.get(self) || Risp.global_bindings.get(self) or
-        raise Risp::Exception.new("No binding for #{self}")
+      Risp.trace(lambda{"#{name}"}) do
+        bindings.get(self) || Risp.global_bindings.get(self) or
+          raise Risp::Exception.new("No binding for #{self}")
+      end
     end
 
     def eq(other)
@@ -175,11 +191,13 @@ module Risp
     end
 
     def eval(arg_list)
-      args = Risp::to_array(arg_list, @symbol_array.length)
-      bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
-        memo.bind(symbol, val)
+      Risp.trace(lambda{"#{@name.inspect}#{arg_list.inspect}"}) do
+        args = Risp::to_array(arg_list, @symbol_array.length)
+        bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
+          memo.bind(symbol, val)
+        end
+        Risp.eval(@form, bindings)
       end
-      Risp.eval(@form, bindings)
     end
 
     def inspect
@@ -237,11 +255,13 @@ module Risp
     end
 
     def eval(args, bindings)
-      if @nargs
-        array = Risp::to_array(args, @nargs)
-        @block.call(*array, bindings)
-      else
-        @block.call(args, bindings)
+      Risp.trace(lambda{"#{@name}#{args.inspect}"}) do
+        if @nargs
+          array = Risp::to_array(args, @nargs)
+          @block.call(*array, bindings)
+        else
+          @block.call(args, bindings)
+        end
       end
     end
 
