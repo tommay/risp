@@ -43,6 +43,10 @@ module Risp
     def inspect
       to_s
     end
+
+    def print
+      Kernel.print(to_s)
+    end
   end
 
   class Symbol
@@ -188,6 +192,29 @@ module Risp
         end
 
       ch + ca + cd
+    end
+
+    def print(ch = "(")
+      Kernel.print(ch)
+
+      a = Risp.car(self)
+      if a.is_a?(Cell)
+        a.print("(")
+      else
+        a.print
+      end
+
+      d = Risp.cdr(self)
+      case
+      when d == Risp::Qnil
+        Kernel.print(")")
+      when d.is_a?(Cell)
+        d.print(" ")
+      else
+        Kernel.print(" . ")
+        d.print
+        Kernel.print(")")
+      end
     end
   end
 
@@ -646,7 +673,8 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         expr = parse(line)
-        puts Risp.eval(expr).to_s
+        Risp.eval(expr).print
+        puts
       rescue Risp::Exception => ex
         puts ex
       end
