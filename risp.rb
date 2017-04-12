@@ -9,8 +9,12 @@ require "pry-byebug"
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
 at_exit do
-  File.read("prelude.risp").split(/\n\n/).each do |section|
-    Risp.eval(Lepr.parse(section))
+  prelude = File.read("prelude.risp")
+  no_comments = prelude.gsub(/;.*/, "")
+  no_comments.split(/\n{2,}/).each do |section|
+    if section !~ /^\s*$/
+      Risp.eval(Lepr.parse(section))
+    end
   end
   Lepr.repl
 end
