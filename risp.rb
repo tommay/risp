@@ -166,10 +166,11 @@ module Risp
   end
 
   class Closure
-    def initialize(symbol_array, form, bindings)
+    def initialize(symbol_array, form, bindings, name)
       @symbol_array = symbol_array
       @form = form
       @bindings = bindings
+      @name = name || form.inspect
     end
 
     def eval(arg_list)
@@ -325,10 +326,10 @@ module Risp
     end
   end
 
-  fsubr("lambda", 2) do |symbols, form, bindings|
+  fsubr("lambda", 2) do |symbols, form, bindings, name = nil|
     symbol_array = to_array(symbols)
     check_symbols(symbol_array)
-    Closure.new(symbol_array, form, bindings)
+    Closure.new(symbol_array, form, bindings, name)
   end
 
   subr("null?", 1) do |arg|
@@ -530,7 +531,7 @@ module Risp
     when Cell
       name = args.car
       symbols = args.cdr
-      lambda(symbols, form, bindings).tap do |closure|
+      lambda(symbols, form, bindings, name.to_s).tap do |closure|
         global(name, closure)
       end
     else
