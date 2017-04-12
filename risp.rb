@@ -165,20 +165,26 @@ module Risp
     end
 
     def to_s(ch = "(")
-      ch + 
-        if car.is_a?(Cell)
-          car.to_s("(")
+      a = Risp.car(self)
+      ca =
+        if a.is_a?(Cell)
+          a.to_s("(")
         else
-          car.to_s
-        end +
-        case
-        when cdr == Risp::Qnil
-          ")"
-        when cdr.is_a?(Cell)
-          cdr.to_s(" ")
-        else
-          " . " + cdr.to_s + ")"
+          a.to_s
         end
+
+      d = Risp.cdr(self)
+      cd =
+        case
+        when d == Risp::Qnil
+          ")"
+        when d.is_a?(Cell)
+          d.to_s(" ")
+        else
+          " . " + d.to_s + ")"
+        end
+
+      ch + ca + cd
     end
   end
 
