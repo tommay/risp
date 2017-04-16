@@ -63,20 +63,6 @@ at_exit do
 end
 
 module Risp
-  @indent = ""
-  def self.trace(string_proc, &block)
-    indent = @indent
-    puts "#{indent}#{string_proc.call} {"
-    @indent += "  "
-    begin
-      block.call.tap do |result|
-        puts "#{indent}} => #{result.inspect}"
-      end
-    ensure
-      @indent = indent
-    end
-  end
-
   module Atom
     def self.new(string)
       Risp::Symbol.intern(string)
@@ -108,13 +94,6 @@ module Risp
 
     def name
       @name
-    end
-
-    def eval(bindings)
-      Risp.trace(lambda{"#{name}"}) do
-        bindings.get(self) or
-          raise Risp::Exception.new("No binding for #{self}")
-      end
     end
 
     def to_s
@@ -279,7 +258,19 @@ module Risp
     _cons(eval(_car(ab), bindings),
           eval(_car(_cdr(ab)), bindings))
   end
-  
+
+  def self.car(arg)
+    _car(arg)
+  end
+
+  def self.cdr(arg)
+    _cdr(arg)
+  end
+
+  def self._cons(x, y)
+    Cell.new(x, y)
+  end
+
   def self._car(arg)
     case arg
     when Cell
@@ -296,18 +287,6 @@ module Risp
     else
       raise Risp::Exception.new("Bad arg to cdr: #{arg.inspect}")
     end
-  end
-
-  def self._cons(x, y)
-    Cell.new(x, y)
-  end
-
-  def self.car(arg)
-    _car(arg)
-  end
-
-  def self.cdr(arg)
-    _cdr(arg)
   end
 
   def self.eq(x, y)
@@ -364,30 +343,6 @@ module Risp
     arg ? Qt : Qnil
   end
 
-  def self.to_list(*elements)
-    elements.reverse.reduce(Risp::Qnil) do |memo, element|
-      _cons(element, memo)
-    end
-  end
-
-  def self.fold_list(accum, list, &block)
-    case list
-    when Qnil
-      accum
-    when Cell
-      accum = block.call(accum, _car(list))
-      fold_list(accum, _cdr(list), &block)
-    else
-      raise Risp::Exception.new("Can't fold #{list.inspect}")
-    end
-  end
-
-  def self.reverse(list)
-    fold_list(Qnil, list) do |memo, element|
-      _cons(element, memo)
-    end
-  end
-
   class Exception < ::Exception
     def initialize(message)
       @message = message
@@ -426,7 +381,7 @@ class Lepr
     token = source.next
     case token
     when "'"
-      Risp::to_list(
+      to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
     when "("
@@ -440,7 +395,7 @@ class Lepr
     token = source.next
     case token
     when "'"
-      quoted = Risp::to_list(
+      quoted = to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
       parse_list(source, Risp::_cons(quoted, list))
@@ -448,10 +403,24 @@ class Lepr
       sublist = parse_list(source, Risp::Qnil)
       parse_list(source, Risp::_cons(sublist, list))
     when ")"
-      Risp::reverse(list)
+      reverse(list)
     else
       atom = Risp::Atom.new(token)
       parse_list(source, Risp::_cons(atom, list))
+    end
+  end
+
+  def self.to_list(*elements)
+    elements.reverse.reduce(Risp::Qnil) do |memo, element|
+      Risp._cons(element, memo)
+    end
+  end
+
+  def self.reverse(list, result = Risp::Qnil)
+    if list == Risp::Qnil
+      result
+    else
+      reverse(Risp._cdr(list), Risp._cons(Risp._car(list), result))
     end
   end
 
