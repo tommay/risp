@@ -3,9 +3,6 @@ GEM
   specs:
     byebug (9.0.6)
     coderay (1.1.1)
-    concurrent-ruby (1.0.5)
-    hamster (3.0.0)
-      concurrent-ruby (~> 1.0)
     method_source (0.8.2)
     pry (0.10.4)
       coderay (~> 1.1.0)
@@ -21,7 +18,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  hamster
   pry-byebug
   readline-history-restore
 

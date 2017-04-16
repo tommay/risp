@@ -1,21 +1,64 @@
 #!/usr/bin/env ruby
 
 require "bundler/setup"
-require "hamster/hash"
 require "readline"
 require "readline/history/restore"
 require "pry-byebug"
 
+# This is an ultra-primitive lisp based on the non-lazy interpeter
+# given in "Cons should not evaluate its arguemnts."  It doesn't
+# have numbers or top-level defines so it's not easy to play with.
+# It does have a repl that understands ' and has really poor diagnostics.
+#
+# Quirks:
+# - User-defined functions have to be done as lambdas bound to the
+#   arguments of a main outer lambda.
+# - Lambdas have to be quoted because lambda isn't a built-in that
+#   returns its own form.
+# - Unbound atoms evaluate to nil.
+# - No atoms are initially bound therefore nil luckily evaluates to nil.
+# - Unknown functions return nil instead of erroring.
+# - Numbers and arithmetic are not supported.
+# - (atom ...) must be used to test for the end of a list, i.e., nil.
+# - I didn't make it so cond has a final else clause.  And since there
+#   is no atom t that evaluates to itself, use ('t ...) in the final
+#   cond pair.
+#
+# But it can evaluate an expression like this, which defines a map
+# function and uses it to map another function over a list and return
+# the result.  The function that gets mapped here just wraps its argument
+# in a list by consing it onto nil:
+#
+#   ((lambda (map lst)
+#      (map '(lambda (e) (cons e nil)) lst))
+#     '(lambda (fn lst)
+#        (cond ((atom lst) nil) ('t (cons (fn (car lst)) (map fn (cdr lst))))))
+#     '(a b c d e))
+#   => ((a) (b) (c) ((d e)) (f))
+#
+# Here's another example that defines zip and zips two lists:
+#   ((lambda (zip)
+#        (zip '(1 2 3) '(a b c d e)))
+#      '(lambda (a b)
+#         (cond
+#           ((atom a) nil)
+#           ((atom b) nil)
+#           ('t (cons (cons (car a) (cons (car b) nil))
+#                     (zip (cdr a) (cdr b)))))))
+#   => ((1 a) (2 b) (3 c))
+#
+# Note that these only work because of the dynamic scoping.  Lexically,
+# the lambdas that are bound to map and zip wouldn't have access to map/zip's
+# bindings so they couldn't recurse via those names.
+#
+# The methods _cons, _car, and _cdr are the fundammental McCarthy
+# functions that work with Cells.  The methods car, cdr, and scons
+# are used by the interpeter, e.g., (car ...) uses method car, and
+# will be redefined to create the lazy interpreter.
+
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
 at_exit do
-  prelude = File.read("prelude.risp")
-  no_comments = prelude.gsub(/;.*/, "")
-  no_comments.split(/\n{2,}/).each do |section|
-    if section !~ /^\s*$/
-      Risp.eval(Lepr.parse(section))
-    end
-  end
   Lepr.repl
 end
 
@@ -36,12 +79,7 @@ module Risp
 
   module Atom
     def self.new(string)
-      case string
-      when /^[0-9]+$/
-        Risp::Number.new(string)
-      else
-        Risp::Symbol.intern(string)
-      end
+      Risp::Symbol.intern(string)
     end
 
     def inspect
@@ -74,73 +112,13 @@ module Risp
 
     def eval(bindings)
       Risp.trace(lambda{"#{name}"}) do
-        bindings.get(self) || Risp.global_bindings.get(self) or
+        bindings.get(self) or
           raise Risp::Exception.new("No binding for #{self}")
       end
     end
 
-    def eq(other)
-      other.is_a?(Symbol) && self.name == other.name
-    end
-
     def to_s
       name
-    end
-  end
-
-  class Number
-    include Atom
-
-    def initialize(thing)
-      @val =
-        case thing
-        when Numeric
-          thing
-        when String
-          thing.to_i
-        else
-          raise "Bad arg to Number.new: #{thing}"
-        end
-    end
-
-    def val
-      @val
-    end
-
-    def eval(bindings)
-      self
-    end
-
-    def +(other)
-      if other.is_a?(Number)
-        Number.new(self.val + other.val)
-      else
-        raise Risp::Exception.new("Can't apply \"+\" to #{other}")
-      end
-    end
-
-    def -(other)
-      if other.is_a?(Number)
-        Number.new(self.val - other.val)
-      else
-        raise Risp::Exception.new("Can't apply \"-\" to #{other}")
-      end
-    end
-
-    def *(other)
-      if other.is_a?(Number)
-        Number.new(self.val * other.val)
-      else
-        raise Risp::Exception.new("Can't apply \"*\" to #{other}")
-      end
-    end
-
-    def eq(other)
-      other.is_a?(Number) && self.val == other.val
-    end
-
-    def to_s
-      val.to_s
     end
   end
 
@@ -222,375 +200,163 @@ module Risp
     end
   end
 
-  class Closure
-    def initialize(symbol_array, form, bindings, name)
-      @symbol_array = symbol_array
-      @form = form
-      @bindings = bindings
-      @name = name || form.inspect
-    end
-
-    def eval(arg_list)
-      Risp.trace(lambda{"#{@name}#{arg_list.inspect}"}) do
-        args = Risp::to_array(arg_list, @symbol_array.length)
-        bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
-          memo.bind(symbol, val)
-        end
-        Risp.eval(@form, bindings)
-      end
-    end
-
-    def inspect
-      to_s(:inspect)
-    end
-
-    def to_s(method = :to_s)
-      "[(" + @symbol_array.map(&method).join(" ") + ") => " +
-        @form.send(method) + "]"
-    end
-  end
-
-  class Bindings
-    def initialize(hash = Hamster::Hash.new)
-      @hash = hash
-    end
-
-    def bind(symbol, val = Slot.new)
-      Bindings.new(@hash.put(symbol, val))
-    end
-
-    def set(symbol, val)
-      @hash[symbol].val = val
-    end
-
-    def get(symbol)
-      val = @hash[symbol]
-      case val
-      when Slot
-        val.val
-      else
-        val
-      end
-    end
-
-    def inspect
-      vals = @hash.flatten(0).map do |k, v|
-        "#{k.inspect}: #{v.inspect}"
-      end
-      "{" + vals.join(", ") + "}"
-    end
-
-    # This is for letrec where we have to set the value after the
-    # binding is created.
-    class Slot
-      attr_accessor :val
-    end
-  end
-
-  module Builtin
-    def initialize(name, nargs, &block)
-      @name = name
-      @nargs = nargs
-      @block = block
-    end
-
-    def eval(args, bindings)
-      Risp.trace(lambda{"#{@name}#{args.inspect}"}) do
-        if @nargs
-          array = Risp::to_array(args, @nargs)
-          @block.call(*array, bindings)
-        else
-          @block.call(args, bindings)
-        end
-      end
-    end
-
-    def inspect
-      to_s
-    end
-
-    def to_s
-      "<#{self.class}: #{@name}>"
-    end
-  end
-
-  class Subr
-    include Builtin
-  end
-
-  class Fsubr
-    include Builtin
-  end
-
-  @global_bindings = Bindings.new
-
-  def self.global_bindings
-    @global_bindings
-  end
-
-  def self.global(symbol, val)
-    @global_bindings = @global_bindings.bind(symbol, val)
-  end
-
   Qnil = Symbol.intern("nil")
-  global(Qnil, Qnil)
-
   Qt = Symbol.intern("t")
-  global(Qt, Qt)
 
-  def self.fsubr(name, nargs = nil, f_name = name, &block)
-    global(Symbol.intern(name), Fsubr.new(name, nargs, &block))
-    define_singleton_method(f_name.to_sym, &block)
+  CAR   = Symbol.intern("car")
+  CDR   = Symbol.intern("cdr")
+  CONS  = Symbol.intern("cons")
+  EQ    = Symbol.intern("eq")
+  ATOM  = Symbol.intern("atom")
+
+  QUOTE  = Symbol.intern("quote")
+  COND   = Symbol.intern("cond")
+  LAMBDA = Symbol.intern("lambda")
+
+  def self.eval(form, bindings = Qnil)
+    case
+    when atom(form) == Qt
+      # XXX Make assoc raise an exception if there is no binding
+      # instead of returning nil.  Then nil needs an explicit binding.
+      # And make an error subr?
+      assoc(form, bindings)
+    # Not an atom, must be a list:
+    when atom(car(form)) == Qt
+      # These are the built-in fsubrs:
+      case car(form)
+      when QUOTE
+        car(cdr(form))
+      when CONS
+        scons(cdr(form), bindings)
+      when COND
+        evcon(cdr(form), bindings)
+      else
+        # This is for subrs and user-defined functions.
+        apply(car(form), evlis(cdr(form), bindings), bindings)
+      end
+    else
+      # The thing in function position is a list.  It's either a lambda
+      # or we raise an exception.
+      apply(car(form), evlis(cdr(form), bindings), bindings)
+    end
   end
 
-  def self.subr(name, nargs = nil, f_name = name, &block)
-    global(Symbol.intern(name), Subr.new(name, nargs, &block))
-    define_singleton_method(f_name.to_sym, &block)
+  # Args have been evaluated.
+  def self.apply(fn, args, bindings)
+    case
+    when atom(fn) == Qt
+      # These are the built-in subrs:
+      case fn
+      when CAR
+        car(_car(args))
+      when CDR
+        cdr(_car(args))
+      when EQ
+        eq(_car(args), _car(_cdr(args)))
+      when ATOM
+        atom(_car(args))
+      when Qnil
+        # Is this is a strange way to handle nil and make it evaluate
+        # to itself.  Any args are ignored.  And nil evaluates to
+        # itself anyway since it has no binding and looking up Qnil
+        # will return Qnil.
+        Qnil
+      else
+        # Look up the fn's binding and try again.
+        apply(eval(fn, bindings), args, bindings)
+      end
+    when eq(car(fn), LAMBDA) == Qt
+      # LAMBDA isn't a subr or fsubr, it's just a merker that lets us
+      # know what to do.
+      eval(car(cdr(cdr(fn))),
+           pairlis(car(cdr(fn)), args, bindings))
+    else
+      raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
+    end
   end
 
-  fsubr("quote", 1) do |arg|
-    arg
+  def self.scons(ab, bindings)
+    _cons(eval(_car(ab), bindings),
+          eval(_car(_cdr(ab)), bindings))
   end
   
-  subr("eq", 2) do |x, y|
-    to_boolean(x.is_a?(Atom) && y.is_a?(Atom) && x.eq(y))
-  end
-
-  subr("car", 1) do |arg|
-    if arg.is_a?(Cell)
+  def self._car(arg)
+    case arg
+    when Cell
       arg.car
     else
-      raise Risp::Exception.new("Bad arg to car: #{arg}")
+      raise Risp::Exception.new("Bad arg to car: #{arg.inspect}")
     end
   end
 
-  subr("cdr", 1) do |arg|
-    if arg.is_a?(Cell)
+  def self._cdr(arg)
+    case arg
+    when Cell
       arg.cdr
     else
-      raise Risp::Exception.new("Bad arg to cdr: #{arg}")
+      raise Risp::Exception.new("Bad arg to cdr: #{arg.inspect}")
     end
   end
 
-  subr("cons", 2) do |x, y|
+  def self._cons(x, y)
     Cell.new(x, y)
   end
 
-  fsubr("cond") do |form, bindings|
+  def self.car(arg)
+    _car(arg)
+  end
+
+  def self.cdr(arg)
+    _cdr(arg)
+  end
+
+  def self.eq(x, y)
+    to_boolean(x == y)
+  end
+
+  # Note that Qnil is considered an atom, which is fine.
+  def self.atom(x)
+    to_boolean(x.is_a?(Atom))
+  end
+
+  def self.pairlis(fpl, apl, bindings)
+    if fpl == Qnil
+      bindings
+    else
+      _cons(_cons(car(fpl), _car(apl)),
+            pairlis(cdr(fpl), _cdr(apl), bindings))
+    end
+  end
+
+  def self.assoc(at, bindings)
     case
-    when form == Qnil
+    when bindings == Qnil
+      # XXX raise an exception?
       Qnil
-    when eval(car(car(form)), bindings) != Qnil
-      eval(car(cdr(car(form))), bindings)
+    when eq(_car(_car(bindings)), at) == Qt
+      _cdr(_car(bindings))
     else
-      cond(cdr(form), bindings)
+      assoc(at, _cdr(bindings))
     end
   end
 
-  fsubr("lambda", 2) do |symbols, form, bindings, name = nil|
-    symbol_array = to_array(symbols)
-    check_symbols(symbol_array)
-    Closure.new(symbol_array, form, bindings, name)
-  end
-
-  subr("null?", 1) do |arg|
-    to_boolean(arg == Qnil)
-  end
-
-  subr("atom?", 1) do |arg|
-    to_boolean(arg.is_a?(Atom))
-  end
-
-  subr("cons?", 1) do |arg|
-    to_boolean(arg.is_a?(Cell))
-  end
-
-  subr("list?", 1) do |arg|
-    to_boolean(arg == Qnil || arg.is_a?(Cell))
-  end
-
-  subr("apply", 2) do |fn, args, bindings|
-    case fn
-    when Fsubr
-      fn.eval(args, bindings)
-    when Subr
-      fn.eval(eval_list(args, bindings), bindings)
-    when Closure
-      fn.eval(eval_list(args, bindings))
-    else
-      raise Risp::Exception.new("Don't know how to apply #{fn}")
-    end
-  end
-
-  subr("eval", 1) do |expr, bindings = Bindings.new|
-    case expr
-    when Atom
-      expr.eval(bindings)
-    when Cell
-      fn = eval(expr.car, bindings)
-      args = expr.cdr
-      apply(fn, args, bindings)
-    else
-      raise Risp::Exception.new("Don't know how to eval #{expr}")
-    end
-  end
-
-  fsubr("and", nil, :f_and) do |args, bindings|
-    case
-    when args == Qnil
-      Qt
-    when args.is_a?(Cell)
-      val = eval(args.car, bindings)
-      case
-      when val == Qnil
-        Qnil
-      when args.cdr == Qnil
-        val
-      else
-        f_and(args.cdr, bindings)
-      end
-    else
-      raise Risp::Exception.new("Can't do \"and\" with #{args}")
-    end
-  end
-
-  fsubr("or", nil, :f_or) do |args, bindings|
-    case
-    when args == Qnil
+  def self.evlis(unargs, bindings)
+    if unargs == Qnil
       Qnil
-    when args.is_a?(Cell)
-      val = eval(args.car, bindings)
-      if val != Qnil
-        val
-      else
-        f_or(args.cdr, bindings)
-      end
     else
-      raise Risp::Exception.new("Can't apply \"and\" to #{args}")
+      _cons(eval(car(unargs), bindings),
+            evlis(cdr(unargs), bindings))
     end
   end
 
-  subr("+") do |list|
-    fold_block(Number.new(0), list) do |memo, arg|
-      memo + arg
-    end
-  end
-
-  subr("-") do |list|
-    case list
-    when Cell
-      val = list.car
-      case val
-      when Number
-        if list.cdr == Qnil
-          Number.new(-val.val)
-        else
-          fold_block(val, list.cdr) do |memo, arg|
-            memo - arg
-          end
-        end
-      else
-        raise Risp::Exception.new("Can't apply \"-\" to #{val}")
-      end
+  def self.evcon(tail, bindings)
+    case
+    when tail == Qnil
+      Qnil
+    when eval(car(car(tail)), bindings) != Qnil
+      eval(car(cdr(car(tail))), bindings)
     else
-      raise Risp::Exception.new("Can't apply \"-\" to #{list}")
-    end
-  end
-
-  subr("*") do |list|
-    fold_block(Number.new(1), list) do |memo, arg|
-      memo * arg
-    end
-  end
-
-  subr("list", nil) do |list|
-    list
-  end
-
-  fsubr("let", 2) do |bind_list, form, bindings|
-    bind_array = Risp::to_array(bind_list)
-
-    check_symbols(
-      bind_array.map do |e|
-        symbol, expr = to_array(e, 2)
-        symbol
-      end)
-
-    new_bindings = bind_array.reduce(bindings) do |memo, e|
-      symbol, expr = to_array(e, 2)
-      val = eval(expr, bindings)
-      memo.bind(symbol, val)
-    end
-
-    eval(form, new_bindings)
-  end
-
-  fsubr("let*", 2) do |bind_list, form, bindings|
-    bind_array = Risp::to_array(bind_list)
-
-    check_symbols(
-      bind_array.map do |e|
-        symbol, expr = to_array(e, 2)
-        symbol
-      end)
-
-    new_bindings = bind_array.reduce(bindings) do |memo, e|
-      symbol, expr = to_array(e, 2)
-      val = eval(expr, memo)
-      memo.bind(symbol, val)
-    end
-
-    eval(form, new_bindings)
-  end
-
-  fsubr("letrec", 2) do |bind_list, form, bindings|
-    bind_array = Risp::to_array(bind_list)
-
-    check_symbols(
-      bind_array.map do |e|
-        symbol, expr = to_array(e, 2)
-        symbol
-      end)
-
-    # Create the new bindings with the names initially unbound.  This sucks.
-    # We need to do this because we can't bake the bindings into Closures
-    # until we've added the names to them, but we can't bind the values
-    # until we have the Closures.
-
-    new_bindings = bind_array.reduce(bindings) do |memo, e|
-      symbol, expr = to_array(e, 2)
-      memo.bind(symbol)
-    end
-
-    # Now bind to the names.  each is a non-functional side-effect thing.
-
-    bind_array.each do |e|
-      symbol, expr = to_array(e, 2)
-      # Now we can bake the bindings into any closures.
-      val = eval(expr, new_bindings)
-      # And finally bind the symbol to its closure.
-      new_bindings.set(symbol, val)
-    end
-      
-    # Finally evaluate the form with the letrec bindings.
-
-    eval(form, new_bindings)
-  end
-
-  fsubr("define", 2) do |args, form, bindings|
-    case args
-    when Symbol
-      eval(form, bindings).tap do |val|
-        global(args, val)
-      end
-    when Cell
-      name = args.car
-      symbols = args.cdr
-      lambda(symbols, form, bindings, name.to_s).tap do |closure|
-        global(name, closure)
-      end
-    else
-      raise Risp::Exception.new("Can't define #{args}")
+      evcon(cdr(tail), bindings)
     end
   end
 
@@ -600,64 +366,25 @@ module Risp
 
   def self.to_list(*elements)
     elements.reverse.reduce(Risp::Qnil) do |memo, element|
-      cons(element, memo)
+      _cons(element, memo)
     end
   end
 
-  def self.to_array(list, length = nil)
-    fold_block([], list) do |memo, element|
-      memo << element
-    end.tap do |array|
-      if length && array.length != length
-        raise Risp::Exception.new("Expected #{length} arguments, got #{array.length}")
-      end
-    end
-  end
-
-  def self.fold_block(memo, list, &block)
+  def self.fold_list(accum, list, &block)
     case list
     when Qnil
-      memo
+      accum
     when Cell
-      new_memo = block.call(memo, list.car)
-      fold_block(new_memo, list.cdr, &block)
+      accum = block.call(accum, _car(list))
+      fold_list(accum, _cdr(list), &block)
     else
-      raise Risp::Exception.new("Can't fold #{list}")
-    end
-  end
-
-  def self.map_block(list, &block)
-    case
-    when list == Qnil
-      Qnil
-    when Cell
-      cons(block.call(list.car), map_block(list.cdr, &block))
-    else
-      raise Risp::Exception.new("Can't map #{list}")
-    end
-  end
-
-  def self.eval_list(list, bindings)
-    map_block(list) do |element|
-      eval(element, bindings)
+      raise Risp::Exception.new("Can't fold #{list.inspect}")
     end
   end
 
   def self.reverse(list)
-    fold_block(Qnil, list) do |memo, element|
-      cons(element, memo)
-    end
-  end
-
-  def self.check_symbols(array)
-    nonsymbols = array.select{|x| !x.is_a?(Symbol)}
-    case nonsymbols.length
-    when 0
-      # Ok
-    when 1
-      raise Risp::Exception.new("Not a symbol: #{nonsymbols.first}")
-    else
-      raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:to_s).join(" ")}")
+    fold_list(Qnil, list) do |memo, element|
+      _cons(element, memo)
     end
   end
 
@@ -716,15 +443,15 @@ class Lepr
       quoted = Risp::to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
-      parse_list(source, Risp::cons(quoted, list))
+      parse_list(source, Risp::_cons(quoted, list))
     when "("
       sublist = parse_list(source, Risp::Qnil)
-      parse_list(source, Risp::cons(sublist, list))
+      parse_list(source, Risp::_cons(sublist, list))
     when ")"
       Risp::reverse(list)
     else
       atom = Risp::Atom.new(token)
-      parse_list(source, Risp::cons(atom, list))
+      parse_list(source, Risp::_cons(atom, list))
     end
   end
 
