@@ -5,10 +5,14 @@ require "readline"
 require "readline/history/restore"
 require "pry-byebug"
 
-# This is an ultra-primitive lisp based on the non-lazy interpeter
-# given in "Cons should not evaluate its arguemnts."  It doesn't
-# have numbers or top-level defines so it's not easy to play with.
-# It does have a repl that understands ' and has really poor diagnostics.
+# This is an ultra-primitive lisp based on the lazy interpeter
+# given in "Cons should not evaluate its argumnts," obtained from
+# the strict interpreter by changing the scons, car, and cdr functions
+# so that scons creates thunks and car/cdr evaluate them.
+#
+# It doesn't have numbers or top-level defines so it's not easy to
+# play with.  It does have a repl that understands ' and has really
+# poor diagnostics.
 #
 # Quirks:
 # - User-defined functions have to be done as lambdas bound to the
@@ -23,11 +27,13 @@ require "pry-byebug"
 # - I didn't make it so cond has a final else clause.  And since there
 #   is no atom t that evaluates to itself, use ('t ...) in the final
 #   cond pair.
+
+# The lazy interpreter can evaluate some things where a strict interpreter
+# would diverge.  First some examples that work with both strict and lazy:
 #
-# But it can evaluate an expression like this, which defines a map
-# function and uses it to map another function over a list and return
-# the result.  The function that gets mapped here just wraps its argument
-# in a list by consing it onto nil:
+# This defines a map function and uses it to map another function over
+# a list and return the result.  The function that gets mapped here
+# just wraps its argument in a list by consing it onto nil:
 #
 #   ((lambda (map lst)
 #      (map '(lambda (e) (cons e nil)) lst))
@@ -46,6 +52,24 @@ require "pry-byebug"
 #           ('t (cons (cons (car a) (cons (car b) nil))
 #                     (zip (cdr a) (cdr b)))))))
 #   => ((1 a) (2 b) (3 c))
+#
+# Here's something that needs the lazy interpreter:
+#   ((lambda (as) (as)) '(lambda () (cons 'a (as))))
+#   => (a a a ... stack overflow
+# The stack overflow is a problem, and the lambda ugliness.
+#
+# Here's correct evluation of something that the strict interpreter would
+# diverge on.  It zips a finite list with an infinite list:
+#   ((lambda (zip as)
+#        (zip '(1 2 3) (as)))
+#      '(lambda (a b)
+#         (cond
+#           ((atom a) nil)
+#           ((atom b) nil)
+#           ('t (cons (cons (car a) (cons (car b) nil))
+#                     (zip (cdr a) (cdr b))))))
+#      '(lambda () (cons 'a (as))))
+#   => ((1 a) (2 a) (3 a))
 #
 # Note that these only work because of the dynamic scoping.  Lexically,
 # the lambdas that are bound to map and zip wouldn't have access to map/zip's
@@ -179,6 +203,50 @@ module Risp
     end
   end
 
+  class Thunk
+    def self.new(form, bindings)
+      if form.is_a?(Atom)
+        # This isn't necessary, we could just return the Thunk, but
+        # resolving symbols now makes debugging more obvious.  But
+        # maybe it keeps Qnil checks from doing dangerous dethunking.
+        #form.eval(bindings)
+        #Risp.eval(form, bindings)
+        Risp.assoc(form, bindings)
+      else
+        super(form, bindings)
+      end
+    end
+
+    def initialize(form, bindings)
+      @state = :unevaluated
+      @form = form
+      @bindings = bindings
+    end
+
+    def eval
+      case @state
+      when :unevaluated
+        @state = :in_progress
+        Risp.eval(@form, @bindings).tap do |result|
+          @memo = result
+          @state = :evaluated
+        end
+      when :in_progress
+        raise Risp::Exception.new("Infinite loop")
+      when :evaluated
+        @memo
+      end
+    end
+
+    def inspect
+      to_s(:inspect)
+    end
+
+    def to_s(method = :to_s)
+      "[thunk: <#{@memo && @memo.send(method)}> #{@form.send(method)}, #{@bindings.send(method)}]"
+    end
+  end
+
   Qnil = Symbol.intern("nil")
   Qt = Symbol.intern("t")
 
@@ -193,7 +261,6 @@ module Risp
   LAMBDA = Symbol.intern("lambda")
 
   def self.eval(form, bindings = Qnil)
-    binding.pry
     case
     when atom(form) == Qt
       # XXX Make assoc raise an exception if there is no binding
@@ -256,26 +323,26 @@ module Risp
   end
 
   def self.scons(ab, bindings)
-    _cons(_cons(car(ab), bindings),
-          _cons(car(cdr(ab)), bindings))
-  end
-
-  def self.xcons(x, y)
-    if false
-      _cons(x, y)
-    else
-      _cons(
-        _cons(_cons(QUOTE, _cons(x, Qnil)), Qnil),
-        _cons(_cons(QUOTE, _cons(y, Qnil)), Qnil))
-    end
+    _cons(Thunk.new(car(ab), bindings),
+          Thunk.new(car(cdr(ab)), bindings))
   end
 
   def self.car(arg)
-    eval(_car(_car(arg)), _cdr(_car(arg)))
+    x = _car(arg)
+    if x.is_a?(Thunk)
+      x.eval
+    else
+      x
+    end
   end
 
   def self.cdr(arg)
-    eval(_car(_cdr(arg)), _cdr(_cdr(arg)))
+    x = _cdr(arg)
+    if x.is_a?(Thunk)
+      x.eval
+    else
+      x
+    end
   end
 
   def self._cons(x, y)
@@ -409,21 +476,21 @@ class Lepr
       quoted = to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
-      parse_list(source, Risp::xcons(quoted, list))
+      parse_list(source, Risp::_cons(quoted, list))
     when "("
       sublist = parse_list(source, Risp::Qnil)
-      parse_list(source, Risp::xcons(sublist, list))
+      parse_list(source, Risp::_cons(sublist, list))
     when ")"
       reverse(list)
     else
       atom = Risp::Atom.new(token)
-      parse_list(source, Risp::xcons(atom, list))
+      parse_list(source, Risp::_cons(atom, list))
     end
   end
 
   def self.to_list(*elements)
     elements.reverse.reduce(Risp::Qnil) do |memo, element|
-      Risp.xcons(element, memo)
+      Risp._cons(element, memo)
     end
   end
 
@@ -431,7 +498,7 @@ class Lepr
     if list == Risp::Qnil
       result
     else
-      reverse(Risp._cdr(list), Risp.xcons(Risp._car(list), result))
+      reverse(Risp._cdr(list), Risp._cons(Risp._car(list), result))
     end
   end
 
