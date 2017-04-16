@@ -231,7 +231,7 @@ module Risp
     end
 
     def eval(arg_list)
-      Risp.trace(lambda{"#{@name.inspect}#{arg_list.inspect}"}) do
+      Risp.trace(lambda{"#{@name}#{arg_list.inspect}"}) do
         args = Risp::to_array(arg_list, @symbol_array.length)
         bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
           memo.bind(symbol, val)
