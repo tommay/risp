@@ -87,6 +87,8 @@ at_exit do
 end
 
 module Risp
+  strict = false
+
   module Atom
     def self.new(string)
       Risp::Symbol.intern(string)
@@ -322,26 +324,39 @@ module Risp
     end
   end
 
-  def self.scons(ab, bindings)
-    _cons(Thunk.new(car(ab), bindings),
-          Thunk.new(car(cdr(ab)), bindings))
-  end
-
-  def self.car(arg)
-    x = _car(arg)
-    if x.is_a?(Thunk)
-      x.eval
-    else
-      x
+  if strict
+    def self.scons(ab, bindings)
+      _cons(eval(_car(ab), bindings),
+            eval(_car(_cdr(ab)), bindings))
     end
-  end
 
-  def self.cdr(arg)
-    x = _cdr(arg)
-    if x.is_a?(Thunk)
-      x.eval
-    else
-      x
+    def self.car(arg)
+      _car(arg)
+    end
+ 
+    def self.cdr(arg)
+      _cdr(arg)
+    end
+  else
+    def self.scons(ab, bindings)
+      _cons(Thunk.new(car(ab), bindings),
+            Thunk.new(car(cdr(ab)), bindings))
+    end
+
+    def self.car(arg)
+      dethunk(_car(arg))
+    end
+
+    def self.cdr(arg)
+      dethunk(_cdr(arg))
+    end
+
+    def self.dethunk(arg)
+      if arg.is_a?(Thunk)
+        arg.eval
+      else
+        arg
+      end
     end
   end
 
