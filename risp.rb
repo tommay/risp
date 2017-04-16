@@ -255,16 +255,16 @@ module Risp
   end
 
   def self.scons(ab, bindings)
-    _cons(eval(_car(ab), bindings),
-          eval(_car(_cdr(ab)), bindings))
+    _cons(_cons(car(ab), bindings),
+          _cons(car(cdr(ab)), bindings))
   end
 
   def self.car(arg)
-    _car(arg)
+    eval(_car(_car(arg)), _cdr(_car(arg)))
   end
 
   def self.cdr(arg)
-    _cdr(arg)
+    eval(_car(_cdr(arg)), _cdr(_cdr(arg)))
   end
 
   def self._cons(x, y)
