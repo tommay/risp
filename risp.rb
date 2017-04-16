@@ -193,6 +193,7 @@ module Risp
   LAMBDA = Symbol.intern("lambda")
 
   def self.eval(form, bindings = Qnil)
+    binding.pry
     case
     when atom(form) == Qt
       # XXX Make assoc raise an exception if there is no binding
@@ -257,6 +258,16 @@ module Risp
   def self.scons(ab, bindings)
     _cons(_cons(car(ab), bindings),
           _cons(car(cdr(ab)), bindings))
+  end
+
+  def self.xcons(x, y)
+    if false
+      _cons(x, y)
+    else
+      _cons(
+        _cons(_cons(QUOTE, _cons(x, Qnil)), Qnil),
+        _cons(_cons(QUOTE, _cons(y, Qnil)), Qnil))
+    end
   end
 
   def self.car(arg)
@@ -398,21 +409,21 @@ class Lepr
       quoted = to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
-      parse_list(source, Risp::_cons(quoted, list))
+      parse_list(source, Risp::xcons(quoted, list))
     when "("
       sublist = parse_list(source, Risp::Qnil)
-      parse_list(source, Risp::_cons(sublist, list))
+      parse_list(source, Risp::xcons(sublist, list))
     when ")"
       reverse(list)
     else
       atom = Risp::Atom.new(token)
-      parse_list(source, Risp::_cons(atom, list))
+      parse_list(source, Risp::xcons(atom, list))
     end
   end
 
   def self.to_list(*elements)
     elements.reverse.reduce(Risp::Qnil) do |memo, element|
-      Risp._cons(element, memo)
+      Risp.xcons(element, memo)
     end
   end
 
@@ -420,7 +431,7 @@ class Lepr
     if list == Risp::Qnil
       result
     else
-      reverse(Risp._cdr(list), Risp._cons(Risp._car(list), result))
+      reverse(Risp._cdr(list), Risp.xcons(Risp._car(list), result))
     end
   end
 
