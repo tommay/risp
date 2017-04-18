@@ -83,16 +83,12 @@ require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
-at_exit do
-  defined?(Lepr) && Lepr.repl
-end
-
 module Risp
-  options = Trollop::options do
+  @options = Trollop::options do
     banner <<EOS
 Usage: #{$0} [options]
 Run the risp repl to interpret my tiny lisp dialect with either lazy
-or strict evaluarion.
+or strict evaluation.
 EOS
     opt :lazy, "Use lazy evaluation (default)"
     opt :strict, "Use strict evaluation"
@@ -100,10 +96,37 @@ EOS
     conflicts :lazy, :strict
   end
 
-  strict = options.strict
+  def self.do_trace
+    @options.trace
+  end
 
-  define_singleton_method(:do_trace) do
-    options.trace
+  at_exit do
+    main
+  end
+
+  def self.main
+    if ARGV.size != 0
+      ARGV.each do |file|
+        execute(file)
+      end
+    else
+      ::Lepr.repl
+    end
+  end
+
+  def self.execute(file)
+    file = File.read(file)
+    no_comments = file.gsub(/;.*/, "")
+    no_comments.split(/\n{2,}/).each do |section|
+      if section !~ /^\s*$/
+        val = eval(::Lepr.parse(section))
+        if do_trace
+          puts val.to_s
+        else
+          val.print
+        end
+      end
+    end
   end
 
   module Atom
@@ -384,7 +407,7 @@ EOS
     end
   end
 
-  if strict
+  if @options.strict
     def self.scons(ab, bindings)
       _cons(eval(_car(ab), bindings),
             eval(_car(_cdr(ab)), bindings))
@@ -534,7 +557,7 @@ EOS
   end
 end
 
-class Lepr
+module Lepr
   def self.repl
     while line = Readline.readline('> ', true)
       begin
