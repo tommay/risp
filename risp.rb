@@ -11,9 +11,8 @@ require "pry-byebug"
 # the strict interpreter by changing the scons, car, and cdr functions
 # so that scons creates thunks and car/cdr evaluate them.
 #
-# It doesn't have numbers or top-level defines so it's not easy to
-# play with.  It does have a repl that understands ' and has really
-# poor diagnostics.
+# It doesn't have top-level defines so it's not easy to play with.  It
+# does have a repl that understands ' and has really poor diagnostics.
 #
 # Quirks:
 # - User-defined functions have to be done as lambdas bound to the
@@ -21,7 +20,10 @@ require "pry-byebug"
 # - Unbound atoms evaluate to nil.
 # - No atoms are initially bound therefore nil luckily evaluates to nil.
 # - Unknown functions return nil instead of erroring.
-# - Numbers and arithmetic are not supported.
+# - Number atoms are supported but there are no functions that operate
+#   on their values.  At least they evaluate to themselves and print
+#   correctly instead of being treated like unbound symbols that
+#   evaluate to nil.
 # - (atom ...) must be used to test for the end of a list, i.e., nil.
 # - I didn't make it so cond has a final else clause.  And since there
 #   is no atom t that evaluates to itself, use ('t ...) in the final
@@ -101,7 +103,12 @@ EOS
 
   module Atom
     def self.new(string)
-      Risp::Symbol.intern(string)
+      case string
+      when /^[0-9]+$/
+        Risp::Number.new(string)
+      else
+        Risp::Symbol.intern(string)
+      end
     end
 
     def inspect
@@ -132,8 +139,41 @@ EOS
       @name
     end
 
+    def eval(bindings)
+      Risp.assoc(self, bindings)
+    end
+
     def to_s
       name
+    end
+  end
+
+  class Number
+    include Atom
+
+    def initialize(thing)
+      @val =
+        if thing.respond_to?(:to_i)
+          thing.to_i
+        else
+          raise "Bad arg to Number.new: #{thing}"
+        end
+    end
+
+    def val
+      @val
+    end
+
+    def eval(bindings)
+      self
+    end
+
+    def ==(other)
+      other.is_a?(Number) && self.val == other.val
+    end
+
+    def to_s
+      val.to_s
     end
   end
 
@@ -221,9 +261,8 @@ EOS
         # This isn't necessary, we could just return the Thunk, but
         # resolving symbols now makes debugging more obvious.  But
         # maybe it keeps Qnil checks from doing dangerous dethunking.
+        Risp.eval(form, bindings)
         #form.eval(bindings)
-        #Risp.eval(form, bindings)
-        Risp.assoc(form, bindings)
       else
         super(form, bindings)
       end
@@ -275,7 +314,7 @@ EOS
   def self.eval(form, bindings = @initial_bindings)
     case
     when atom(form) == Qt
-      assoc(form, bindings)
+      form.eval(bindings)
     # Not an atom, must be a list:
     when atom(car(form)) == Qt
       # These are the built-in fsubrs:
