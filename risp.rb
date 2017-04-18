@@ -18,8 +18,6 @@ require "pry-byebug"
 # Quirks:
 # - User-defined functions have to be done as lambdas bound to the
 #   arguments of a main outer lambda.
-# - Lambdas have to be quoted because lambda isn't a built-in that
-#   returns its own form.
 # - Unbound atoms evaluate to nil.
 # - No atoms are initially bound therefore nil luckily evaluates to nil.
 # - Unknown functions return nil instead of erroring.
@@ -37,25 +35,25 @@ require "pry-byebug"
 # just wraps its argument in a list by consing it onto nil:
 #
 #   ((lambda (map lst)
-#      (map '(lambda (e) (cons e nil)) lst))
-#     '(lambda (fn lst)
-#        (cond ((atom lst) nil) ('t (cons (fn (car lst)) (map fn (cdr lst))))))
-#     '(a b c d e))
+#      (map (lambda (e) (cons e nil)) lst))
+#     (lambda (fn lst)
+#       (cond ((atom lst) nil) ('t (cons (fn (car lst)) (map fn (cdr lst))))))
+#     (a b c d e))
 #   => ((a) (b) (c) ((d e)) (f))
 #
 # Here's another example that defines zip and zips two lists:
 #   ((lambda (zip)
 #        (zip '(1 2 3) '(a b c d e)))
-#      '(lambda (a b)
-#         (cond
-#           ((atom a) nil)
-#           ((atom b) nil)
-#           ('t (cons (cons (car a) (cons (car b) nil))
-#                     (zip (cdr a) (cdr b)))))))
+#      (lambda (a b)
+#        (cond
+#          ((atom a) nil)
+#          ((atom b) nil)
+#          ('t (cons (cons (car a) (cons (car b) nil))
+#                    (zip (cdr a) (cdr b)))))))
 #   => ((1 a) (2 b) (3 c))
 #
 # Here's something that needs the lazy interpreter:
-#   ((lambda (as) (as)) '(lambda () (cons 'a (as))))
+#   ((lambda (as) (as)) (lambda () (cons 'a (as))))
 #   => (a a a ... stack overflow
 # The stack overflow is a problem, and the lambda ugliness.
 #
@@ -63,13 +61,13 @@ require "pry-byebug"
 # diverge on.  It zips a finite list with an infinite list:
 #   ((lambda (zip as)
 #        (zip '(1 2 3) (as)))
-#      '(lambda (a b)
-#         (cond
-#           ((atom a) nil)
-#           ((atom b) nil)
-#           ('t (cons (cons (car a) (cons (car b) nil))
-#                     (zip (cdr a) (cdr b))))))
-#      '(lambda () (cons 'a (as))))
+#      (lambda (a b)
+#        (cond
+#          ((atom a) nil)
+#          ((atom b) nil)
+#          ('t (cons (cons (car a) (cons (car b) nil))
+#                    (zip (cdr a) (cdr b))))))
+#      (lambda () (cons 'a (as))))
 #   => ((1 a) (2 a) (3 a))
 #
 # Note that these only work because of the dynamic scoping.  Lexically,
@@ -291,6 +289,9 @@ EOS
         scons(cdr(form), bindings)
       when COND
         evcon(cdr(form), bindings)
+      when LAMBDA
+        # LAMBDA is self-quoting
+        form
       else
         # This is for subrs and user-defined functions.
         apply(car(form), evlis(cdr(form), bindings), bindings)
