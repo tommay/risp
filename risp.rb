@@ -9,17 +9,6 @@ require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
-at_exit do
-  prelude = File.read("prelude.risp")
-  no_comments = prelude.gsub(/;.*/, "")
-  no_comments.split(/\n{2,}/).each do |section|
-    if section !~ /^\s*$/
-      Risp.eval(Lepr.parse(section))
-    end
-  end
-  Lepr.repl
-end
-
 module Risp
   @options = Trollop::options do
     banner <<EOS
@@ -31,6 +20,35 @@ EOS
 
   def self.do_trace
     @options.trace
+  end
+
+  at_exit do
+    if ARGV.size != 0
+      ARGV.each do |file|
+        execute(file, true)
+      end
+    else
+      execute("prelude.risp", false)
+      ::Lepr.repl
+    end
+  end
+
+  def self.execute(file, do_print)
+    file = File.read(file)
+    no_comments = file.gsub(/;.*/, "")
+    no_comments.split(/\n{2,}/).each do |section|
+      if section !~ /^\s*$/
+        eval(::Lepr.parse(section)).tap do |val|
+          if do_print
+            if do_trace
+              puts val.to_s
+            else
+              val.print
+            end
+          end
+        end
+      end
+    end
   end
 
   if do_trace
