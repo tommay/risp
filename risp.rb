@@ -3,6 +3,7 @@
 require "bundler/setup"
 require "readline"
 require "readline/history/restore"
+require "trollop"
 require "pry-byebug"
 
 # This is an ultra-primitive lisp based on the lazy interpeter
@@ -27,7 +28,7 @@ require "pry-byebug"
 # - I didn't make it so cond has a final else clause.  And since there
 #   is no atom t that evaluates to itself, use ('t ...) in the final
 #   cond pair.
-
+#
 # The lazy interpreter can evaluate some things where a strict interpreter
 # would diverge.  First some examples that work with both strict and lazy:
 #
@@ -83,11 +84,22 @@ require "pry-byebug"
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
 at_exit do
-  Lepr.repl
+  defined?(Lepr) && Lepr.repl
 end
 
 module Risp
-  strict = false
+  options = Trollop::options do
+    banner <<EOS
+Usage: #{$0} [options]
+Run the risp repl to interpret my tiny lisp dialect with either lazy
+or strict evaluarion.
+EOS
+    opt :lazy, "Use lazy evaluation (default)"
+    opt :strict, "Use strict evaluation"
+    conflicts :lazy, :strict
+  end
+
+  strict = options.strict
 
   module Atom
     def self.new(string)
