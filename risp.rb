@@ -96,10 +96,15 @@ or strict evaluarion.
 EOS
     opt :lazy, "Use lazy evaluation (default)"
     opt :strict, "Use strict evaluation"
+    opt :trace, "Print evaluation trace"
     conflicts :lazy, :strict
   end
 
   strict = options.strict
+
+  define_singleton_method(:do_trace) do
+    options.trace
+  end
 
   module Atom
     def self.new(string)
@@ -314,28 +319,34 @@ EOS
   def self.eval(form, bindings = @initial_bindings)
     case
     when atom(form) == Qt
-      form.eval(bindings)
+      Risp.trace(lambda{form.to_s}) do
+        form.eval(bindings)
+      end
     # Not an atom, must be a list:
     when atom(car(form)) == Qt
-      # These are the built-in fsubrs:
-      case car(form)
-      when QUOTE
-        car(cdr(form))
-      when CONS
-        scons(cdr(form), bindings)
-      when COND
-        evcon(cdr(form), bindings)
-      when LAMBDA
-        # LAMBDA is self-quoting
-        form
-      else
-        # This is for subrs and user-defined functions.
-        apply(car(form), evlis(cdr(form), bindings), bindings)
+      Risp.trace(lambda{car(form).to_s}) do
+        # These are the built-in fsubrs:
+        case car(form)
+        when QUOTE
+          car(cdr(form))
+        when CONS
+          scons(cdr(form), bindings)
+        when COND
+          evcon(cdr(form), bindings)
+        when LAMBDA
+          # LAMBDA is self-quoting
+          form
+        else
+          # This is for subrs and user-defined functions.
+          apply(car(form), evlis(cdr(form), bindings), bindings)
+        end
       end
     else
       # The thing in function position is a list.  It's either a lambda
       # or we raise an exception.
-      apply(car(form), evlis(cdr(form), bindings), bindings)
+      Risp.trace(lambda{car(form).to_s}) do
+        apply(car(form), evlis(cdr(form), bindings), bindings)
+      end
     end
   end
 
@@ -501,6 +512,26 @@ EOS
       @message
     end
   end
+
+  if do_trace
+    @indent = ""
+    def self.trace(string_proc, &block)
+      indent = @indent
+      puts "#{indent}#{string_proc.call} {"
+      @indent += "  "
+      begin
+        block.call.tap do |result|
+          puts "#{indent}} => #{result.inspect}"
+        end
+      ensure
+        @indent = indent
+      end
+    end
+  else
+    def self.trace(string_proc, &block)
+      block.call
+    end
+  end
 end
 
 class Lepr
@@ -508,7 +539,14 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         expr = parse(line)
-        Risp.eval(expr).print
+        val = Risp.eval(expr)
+        # If we're tracing then don't use the incremental print
+        # because the outputs will be interspersed.
+        if Risp.do_trace
+          puts val.to_s
+        else
+          val.print
+        end
         puts
       rescue Risp::Exception => ex
         puts ex
