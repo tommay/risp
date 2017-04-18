@@ -272,12 +272,9 @@ EOS
   COND   = Symbol.intern("cond")
   LAMBDA = Symbol.intern("lambda")
 
-  def self.eval(form, bindings = Qnil)
+  def self.eval(form, bindings = @initial_bindings)
     case
     when atom(form) == Qt
-      # XXX Make assoc raise an exception if there is no binding
-      # instead of returning nil.  Then nil needs an explicit binding.
-      # And make an error subr?
       assoc(form, bindings)
     # Not an atom, must be a list:
     when atom(car(form)) == Qt
@@ -416,8 +413,7 @@ EOS
   def self.assoc(at, bindings)
     case
     when bindings == Qnil
-      # XXX raise an exception?
-      Qnil
+      raise Risp::Exception.new("No binding for #{at}")
     when eq(_car(_car(bindings)), at) == Qt
       _cdr(_car(bindings))
     else
@@ -447,6 +443,14 @@ EOS
 
   def self.to_boolean(arg)
     arg ? Qt : Qnil
+  end
+
+  @initial_bindings =
+    {
+      Qnil => Qnil,
+      Qt => Qt,
+    }.reduce(Qnil) do |accum, (atom, val)|
+    _cons(_cons(atom, val), accum)
   end
 
   class Exception < ::Exception
