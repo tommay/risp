@@ -4,6 +4,7 @@ require "bundler/setup"
 require "hamster/hash"
 require "readline"
 require "readline/history/restore"
+require "trollop"
 require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
@@ -20,17 +21,35 @@ at_exit do
 end
 
 module Risp
-  @indent = ""
-  def self.trace(string_proc, &block)
-    indent = @indent
-    puts "#{indent}#{string_proc.call} {"
-    @indent += "  "
-    begin
-      block.call.tap do |result|
-        puts "#{indent}} => #{result.inspect}"
+  @options = Trollop::options do
+    banner <<EOS
+Usage: #{$0} [options] [file...]
+Run the risp repl to interpret my tiny lisp dialect with trict evaluation.
+EOS
+    opt :trace, "Print evaluation trace"
+  end
+
+  def self.do_trace
+    @options.trace
+  end
+
+  if do_trace
+    @indent = ""
+    def self.trace(string_proc, &block)
+      indent = @indent
+      puts "#{indent}#{string_proc.call} {"
+      @indent += "  "
+      begin
+        block.call.tap do |result|
+          puts "#{indent}} => #{result.inspect}"
+        end
+      ensure
+        @indent = indent
       end
-    ensure
-      @indent = indent
+    end
+  else
+    def self.trace(string_proc, &block)
+      block.call
     end
   end
 
@@ -677,8 +696,14 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         expr = parse(line)
-        Risp.eval(expr).print
-        puts
+        Risp.eval(expr).tap do |val|
+          if Risp.do_trace
+            puts val.to_s
+          else
+            val.print
+            puts
+          end
+        end
       rescue Risp::Exception => ex
         puts ex
       end
