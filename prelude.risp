@@ -6,8 +6,8 @@
 
 (define (take n lst)
   (cond
-   ((null? lst) nil)
    ((eq n 0) nil)
+   ((null? lst) nil)
    (t
     (cons (car lst) (take (- n 1) (cdr lst))))))
 
