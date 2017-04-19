@@ -422,6 +422,13 @@ EOS
   Qnil = Symbol.intern("nil")
   global(Qnil, Qnil)
 
+  # Make Qnil show up as "Qnil" in the debugger to differntiate it
+  # from ruby's nil.
+
+  def Qnil.inspect
+    "Qnil"
+  end
+
   Qt = Symbol.intern("t")
   global(Qt, Qt)
 
