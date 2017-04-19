@@ -352,6 +352,10 @@ EOS
       to_s
     end
 
+    def print
+      super(to_s)
+    end
+
     def to_s
       "<#{self.class}: #{@name}>"
     end
