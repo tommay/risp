@@ -117,7 +117,7 @@ EOS
       end
     end
 
-    def eq(other)
+    def ==(other)
       other.is_a?(Symbol) && self.name == other.name
     end
 
@@ -173,7 +173,7 @@ EOS
       end
     end
 
-    def eq(other)
+    def ==(other)
       other.is_a?(Number) && self.val == other.val
     end
 
