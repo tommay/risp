@@ -92,3 +92,30 @@ code:
        (t (filter fn (cdr lst)))))
    (lambda () (cons 'atom (atoms))))
 ~~~~
+
+## On divergence
+
+A lot of things that diverge will blow the stack instead of just
+running forever.  For example, this runs correctly:
+
+~~~~
+(zip '(a) (filter (lambda (n) (eq n 4)) evens))
+=> ((a 4))
+----
+
+but if the arguments are reversed then zip diverges since filtering an
+infinite list gives an infinite list and zip doesn't know it's ok to end.
+However, it will blow the stack.
+
+Haskell also diverges in the same case:
+
+~~~~
+evens = map (+2) (0 : evens)
+zip ["a"] (filter (==4) evens)
+=> [("a",4)]
+zip (filter (==4) evens) ["a"]
+[(4,"a")   runs forever
+~~~~
+
+I think blowing the stack is due to a lack of tail-call optimization.
+I could possibly use trampolines to get around this.
