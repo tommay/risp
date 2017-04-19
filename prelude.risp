@@ -51,6 +51,8 @@
 (define (map fn lst)
   (foldr (lambda (e tail) (cons (fn e) tail)) nil lst))
 
+;; This only works wight with lazy evaluation.
+
 (define (if bool then else)
   (cond (bool then) (t else)))
 
@@ -104,3 +106,10 @@
     (car list))
    (t
     (nth (- n 1) (cdr list)))))
+
+(define (zip a b)
+  (cond
+   ((null? a) nil)
+   ((null? b) nil)
+   (t
+    (cons (list (car a) (car b)) (zip (cdr a) (cdr b))))))
