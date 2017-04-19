@@ -113,7 +113,7 @@ EOS
     end
 
     def eval(bindings)
-      Risp.trace(lambda{"#{name}"}) do
+      Risp.trace(->{"#{name}"}) do
         bindings.get(self) || Risp.global_bindings.get(self) or
           raise Risp::Exception.new("No binding for #{self.inspect}")
       end
@@ -269,7 +269,7 @@ EOS
     end
 
     def eval(arg_list)
-      Risp.trace(lambda{"#{@name}#{arg_list.inspect}"}) do
+      Risp.trace(->{"#{@name}#{arg_list.inspect}"}) do
         args = Risp::to_array(arg_list, @symbol_array.length)
         bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
           memo.bind(symbol, val)
@@ -384,7 +384,7 @@ EOS
     end
 
     def eval(args, bindings)
-      Risp.trace(lambda{"#{@name}#{args.inspect}"}) do
+      Risp.trace(->{"#{@name}#{args.inspect}"}) do
         if @nargs
           array = Risp::to_array(args, @nargs)
           @block.call(*array, bindings)
