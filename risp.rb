@@ -352,6 +352,12 @@ EOS
       end
     end
 
+    # Define [] on strings for easy debugging.
+
+    def [](string)
+      get(Risp::Symbol.intern(string))
+    end
+
     def inspect
       vals = @hash.flatten(0).map do |k, v|
         "#{k.inspect}: #{v.inspect}"
