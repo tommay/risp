@@ -520,6 +520,7 @@ EOS
   end
 
   def self.eval_thunk(expr, bindings)
+    expr = dethunk(expr)
     case expr
     when Atom
       expr.eval(bindings)
@@ -561,7 +562,7 @@ EOS
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      val = eval_thunk(dethunk(args.car), bindings)
+      val = eval_thunk(args.car, bindings)
       case
       when val == Qnil
         Qnil
@@ -581,7 +582,7 @@ EOS
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      val = eval_thunk(dethunk(args.car), bindings)
+      val = eval_thunk(args.car, bindings)
       if val != Qnil
         val
       else
