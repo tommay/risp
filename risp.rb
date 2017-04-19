@@ -281,6 +281,12 @@ EOS
       to_s(:inspect)
     end
 
+    def print
+      super("[(" + @symbol_array.map(&:to_s).join(" ") + ") => ")
+      @form.print
+      super("]")
+    end
+
     def to_s(method = :to_s)
       "[(" + @symbol_array.map(&method).join(" ") + ") => " +
         @form.send(method) + "]"
