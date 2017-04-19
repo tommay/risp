@@ -717,6 +717,11 @@ EOS
     end
   end
 
+  subr("pry", 1) do |arg|
+    binding.pry
+    arg
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
