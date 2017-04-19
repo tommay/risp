@@ -57,12 +57,14 @@
   (foldr (lambda (_ tail) (+ 1 tail)) 0 lst))
 
 (define (numbers first)
-  (cons first (map (lambda (n) (+ n 1)) (numbers))))
+  (letrec
+   ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
+   maker))
 
 (define (factorial n)
   (apply * (take n (numbers 1))))
 
-(define (factorial n)
+(define (factorial2 n)
   (apply * (take n (cdr (numbers 0)))))
 
 (define (reverse lst)
