@@ -23,12 +23,12 @@ EOS
   end
 
   at_exit do
+    execute("prelude.risp", true)
     if ARGV.size != 0
       ARGV.each do |file|
         execute(file, true)
       end
     else
-      execute("prelude.risp", false)
       ::Lepr.repl
     end
   end
@@ -44,6 +44,7 @@ EOS
               puts val.to_s
             else
               val.print
+              puts
             end
           end
         end
