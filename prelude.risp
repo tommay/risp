@@ -22,19 +22,6 @@
 (define (filter pred lst)
   (flatten (map (lambda (e) (if (pred e) (list e) ())) lst)))
 
-;; Fake things out so the defines are evaluated but not printed, since
-;; they create infinite lists.
-
-(and
-  (define evens
-     (cons 0 (map (lambda (a) (+ a 2)) evens)))
-  'not-printed)
-
-(and
-  (define evens2
-    (map (lambda (a) (+ a 2)) (cons 0 evens)))
-  'not-printed)
-
 ;; This does not stream.
 
 (define (foldl fn accum lst)
@@ -123,3 +110,16 @@
    ((null? b) nil)
    (t
     (cons (list (car a) (car b)) (zip (cdr a) (cdr b))))))
+
+;; Fake things out so the defines are evaluated but not printed, since
+;; they create infinite lists.
+
+(and
+  (define evens
+     (cons 0 (map (lambda (a) (+ a 2)) evens)))
+  'not-printed)
+
+(and
+  (define evens2
+    (map (lambda (a) (+ a 2)) (cons 0 evens)))
+  'not-printed)
