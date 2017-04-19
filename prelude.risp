@@ -22,8 +22,18 @@
 (define (filter pred lst)
   (flatten (map (lambda (e) (if (pred e) (list e) ())) lst)))
 
-(define (evens)
-  (cons 0 (map (lambda (a) (+ a 2)) (evens))))
+;; Fake things out so the defines are evaluated but not printed, since
+;; they create infinite lists.
+
+(and
+  (define evens
+     (cons 0 (map (lambda (a) (+ a 2)) evens)))
+  'not-printed)
+
+(and
+  (define evens2
+    (map (lambda (a) (+ a 2)) (cons 0 evens)))
+  'not-printed)
 
 ;; This does not stream.
 
