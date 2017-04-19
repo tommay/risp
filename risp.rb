@@ -23,6 +23,8 @@ EOS
   end
 
   at_exit do
+    # Currently this has to be true because printing causes the
+    # expression's thunks to be evaluated.
     execute("prelude.risp", true)
     if ARGV.size != 0
       ARGV.each do |file|
@@ -241,8 +243,8 @@ EOS
 
       nxt = self
       while nxt != Qnil
-        Risp.car(nxt).print
-        nxt = Risp.cdr(nxt)
+        Risp.dethunk(Risp.car(nxt)).print
+        nxt = Risp.dethunk(Risp.cdr(nxt))
         case nxt
         when Qnil
         when Cell
@@ -292,6 +294,41 @@ EOS
     end
   end
 
+  class Thunk
+    def initialize(form, bindings)
+      @state = :unevaluated
+      @form = form
+      @bindings = bindings
+    end
+
+    def eval
+      case @state
+      when :unevaluated
+        @state = :in_progress
+        Risp.eval_thunk(@form, @bindings).tap do |result|
+          @memo = result
+          @state = :evaluated
+        end
+      when :in_progress
+        raise Risp::Exception.new("Infinite loop")
+      when :evaluated
+        @memo
+      end
+    end
+
+    def inspect
+      to_s(:inspect)
+    end
+
+    def print
+      eval.print
+    end
+
+    def to_s(method = :to_s)
+      "[thunk: <#{@memo && @memo.send(method)}> #{@form.send(method)}, #{@bindings.send(method)}]"
+    end
+  end
+
   class Bindings
     def initialize(hash = Hamster::Hash.new)
       @hash = hash
@@ -320,6 +357,10 @@ EOS
         "#{k.inspect}: #{v.inspect}"
       end
       "{" + vals.join(", ") + "}"
+    end
+
+    def print
+      super(inspect)
     end
 
     # This is for letrec where we have to set the value after the
@@ -399,10 +440,13 @@ EOS
   end
   
   subr("eq", 2) do |x, y|
-    to_boolean(x.is_a?(Atom) && y.is_a?(Atom) && x.eq(y))
+    to_boolean((x = dethunk(x)).is_a?(Atom) &&
+               (y = dethunk(y)).is_a?(Atom) &&
+               x == y)
   end
 
   subr("car", 1) do |arg|
+    arg = dethunk(arg)
     if arg.is_a?(Cell)
       arg.car
     else
@@ -411,6 +455,7 @@ EOS
   end
 
   subr("cdr", 1) do |arg|
+    arg = dethunk(arg)
     if arg.is_a?(Cell)
       arg.cdr
     else
@@ -426,7 +471,7 @@ EOS
     case
     when form == Qnil
       Qnil
-    when eval(car(car(form)), bindings) != Qnil
+    when eval_thunk(car(car(form)), bindings) != Qnil
       eval(car(cdr(car(form))), bindings)
     else
       cond(cdr(form), bindings)
@@ -440,35 +485,64 @@ EOS
   end
 
   subr("null?", 1) do |arg|
+    arg = dethunk(arg)
     to_boolean(arg == Qnil)
   end
 
   subr("atom?", 1) do |arg|
+    arg = dethunk(arg)
     to_boolean(arg.is_a?(Atom))
   end
 
   subr("cons?", 1) do |arg|
+    arg = dethunk(arg)
     to_boolean(arg.is_a?(Cell))
   end
 
   subr("list?", 1) do |arg|
+    arg = dethunk(arg)
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
-  subr("eval", 1) do |expr, bindings = Bindings.new|
+  fsubr("eval", 1) do |expr, bindings = Bindings.new|
+    case expr
+    when Atom
+      # Don't bother to make thunks just to look up atom bindings.
+      # Assume the global_bindings won't change while we're evaluating
+      # an expression. Numbers certainly never change.  Neither should
+      # Qt and Qnil.
+      expr.eval(bindings)
+    when Thunk
+      expr
+    else
+      Thunk.new(expr, bindings)
+    end
+  end
+
+  def self.eval_thunk(expr, bindings)
     case expr
     when Atom
       expr.eval(bindings)
     when Cell
-      fn = eval(expr.car, bindings)
-      args = expr.cdr
+      fn = eval_thunk(car(expr), bindings)
+      args = cdr(expr)
       apply(fn, args, bindings)
     else
       raise Risp::Exception.new("Don't know how to eval #{expr.inspect}")
     end
   end
 
+  def self.dethunk(arg)
+    if arg.is_a?(Thunk)
+      dethunk(arg.eval)
+    else
+      arg
+    end
+  end
+
   subr("apply", 2) do |fn, args, bindings|
+    fn = dethunk(fn)
+    args = dethunk(args)
     case fn
     when Fsubr
       fn.eval(args, bindings)
@@ -482,15 +556,16 @@ EOS
   end
 
   fsubr("and", nil, :f_and) do |args, bindings|
+    args = dethunk(args)
     case
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      val = eval(args.car, bindings)
+      val = eval_thunk(dethunk(args.car), bindings)
       case
       when val == Qnil
         Qnil
-      when args.cdr == Qnil
+      when dethunk(args.cdr) == Qnil
         val
       else
         f_and(args.cdr, bindings)
@@ -501,11 +576,12 @@ EOS
   end
 
   fsubr("or", nil, :f_or) do |args, bindings|
+    args = dethunk(args)
     case
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      val = eval(args.car, bindings)
+      val = eval_thunk(dethunk(args.car), bindings)
       if val != Qnil
         val
       else
@@ -518,21 +594,22 @@ EOS
 
   subr("+") do |list|
     fold_block(Number.new(0), list) do |memo, arg|
-      memo + arg
+      memo + dethunk(arg)
     end
   end
 
   subr("-") do |list|
+    list = dethunk(list)
     case list
     when Cell
-      val = list.car
+      val = dethunk(list.car)
       case val
       when Number
-        if list.cdr == Qnil
+        if dethunk(list.cdr) == Qnil
           Number.new(-val.val)
         else
           fold_block(val, list.cdr) do |memo, arg|
-            memo - arg
+            memo - dethunk(arg)
           end
         end
       else
@@ -545,12 +622,12 @@ EOS
 
   subr("*") do |list|
     fold_block(Number.new(1), list) do |memo, arg|
-      memo * arg
+      memo * dethunk(arg)
     end
   end
 
   subr("list", nil) do |list|
-    list
+    dethunk(list)
   end
 
   fsubr("let", 2) do |bind_list, form, bindings|
@@ -661,6 +738,7 @@ EOS
   end
 
   def self.fold_block(memo, list, &block)
+    list = dethunk(list)
     case list
     when Qnil
       memo
@@ -673,6 +751,7 @@ EOS
   end
 
   def self.map_block(list, &block)
+    list = dethunk(list)
     case list
     when Qnil
       Qnil
