@@ -112,7 +112,7 @@ EOS
     def eval(bindings)
       Risp.trace(lambda{"#{name}"}) do
         bindings.get(self) || Risp.global_bindings.get(self) or
-          raise Risp::Exception.new("No binding for #{self}")
+          raise Risp::Exception.new("No binding for #{self.inspect}")
       end
     end
 
@@ -136,7 +136,7 @@ EOS
         when String
           thing.to_i
         else
-          raise "Bad arg to Number.new: #{thing}"
+          raise "Bad arg to Number.new: #{thing.inspect}"
         end
     end
 
@@ -152,7 +152,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val + other.val)
       else
-        raise Risp::Exception.new("Can't apply \"+\" to #{other}")
+        raise Risp::Exception.new("Can't apply \"+\" to #{other.inspect}")
       end
     end
 
@@ -160,7 +160,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val - other.val)
       else
-        raise Risp::Exception.new("Can't apply \"-\" to #{other}")
+        raise Risp::Exception.new("Can't apply \"-\" to #{other.inspect}")
       end
     end
 
@@ -168,7 +168,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val * other.val)
       else
-        raise Risp::Exception.new("Can't apply \"*\" to #{other}")
+        raise Risp::Exception.new("Can't apply \"*\" to #{other.inspect}")
       end
     end
 
@@ -407,7 +407,7 @@ EOS
     if arg.is_a?(Cell)
       arg.car
     else
-      raise Risp::Exception.new("Bad arg to car: #{arg}")
+      raise Risp::Exception.new("Bad arg to car: #{arg.inspect}")
     end
   end
 
@@ -415,7 +415,7 @@ EOS
     if arg.is_a?(Cell)
       arg.cdr
     else
-      raise Risp::Exception.new("Bad arg to cdr: #{arg}")
+      raise Risp::Exception.new("Bad arg to cdr: #{arg.inspect}")
     end
   end
 
@@ -465,7 +465,7 @@ EOS
     when Closure
       fn.eval(eval_list(args, bindings))
     else
-      raise Risp::Exception.new("Don't know how to apply #{fn}")
+      raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
     end
   end
 
@@ -478,7 +478,7 @@ EOS
       args = expr.cdr
       apply(fn, args, bindings)
     else
-      raise Risp::Exception.new("Don't know how to eval #{expr}")
+      raise Risp::Exception.new("Don't know how to eval #{expr.inspect}")
     end
   end
 
@@ -497,7 +497,7 @@ EOS
         f_and(args.cdr, bindings)
       end
     else
-      raise Risp::Exception.new("Can't do \"and\" with #{args}")
+      raise Risp::Exception.new("Can't do \"and\" with #{args.inspecct}")
     end
   end
 
@@ -513,7 +513,7 @@ EOS
         f_or(args.cdr, bindings)
       end
     else
-      raise Risp::Exception.new("Can't apply \"and\" to #{args}")
+      raise Risp::Exception.new("Can't apply \"and\" to #{args.inspect}")
     end
   end
 
@@ -537,10 +537,10 @@ EOS
           end
         end
       else
-        raise Risp::Exception.new("Can't apply \"-\" to #{val}")
+        raise Risp::Exception.new("Can't apply \"-\" to #{val.inspect}")
       end
     else
-      raise Risp::Exception.new("Can't apply \"-\" to #{list}")
+      raise Risp::Exception.new("Can't apply \"-\" to #{list.inspect}")
     end
   end
 
@@ -637,7 +637,7 @@ EOS
         global(name, closure)
       end
     else
-      raise Risp::Exception.new("Can't define #{args}")
+      raise Risp::Exception.new("Can't define #{args.inspect}")
     end
   end
 
@@ -669,7 +669,7 @@ EOS
       new_memo = block.call(memo, list.car)
       fold_block(new_memo, list.cdr, &block)
     else
-      raise Risp::Exception.new("Can't fold #{list}")
+      raise Risp::Exception.new("Can't fold #{list.inspect}")
     end
   end
 
@@ -680,7 +680,7 @@ EOS
     when Cell
       cons(block.call(list.car), map_block(list.cdr, &block))
     else
-      raise Risp::Exception.new("Can't map #{list}")
+      raise Risp::Exception.new("Can't map #{list.inspect}")
     end
   end
 
@@ -702,9 +702,9 @@ EOS
     when 0
       # Ok
     when 1
-      raise Risp::Exception.new("Not a symbol: #{nonsymbols.first}")
+      raise Risp::Exception.new("Not a symbol: #{nonsymbols.first.inspect}")
     else
-      raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:to_s).join(" ")}")
+      raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:inspect).join(" ")}")
     end
   end
 
