@@ -457,19 +457,6 @@ EOS
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
-  subr("apply", 2) do |fn, args, bindings|
-    case fn
-    when Fsubr
-      fn.eval(args, bindings)
-    when Subr
-      fn.eval(eval_list(args, bindings), bindings)
-    when Closure
-      fn.eval(eval_list(args, bindings))
-    else
-      raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
-    end
-  end
-
   subr("eval", 1) do |expr, bindings = Bindings.new|
     case expr
     when Atom
@@ -480,6 +467,19 @@ EOS
       apply(fn, args, bindings)
     else
       raise Risp::Exception.new("Don't know how to eval #{expr.inspect}")
+    end
+  end
+
+  subr("apply", 2) do |fn, args, bindings|
+    case fn
+    when Fsubr
+      fn.eval(args, bindings)
+    when Subr
+      fn.eval(eval_list(args, bindings), bindings)
+    when Closure
+      fn.eval(eval_list(args, bindings))
+    else
+      raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
     end
   end
 
