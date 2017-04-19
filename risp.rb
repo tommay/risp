@@ -471,7 +471,7 @@ EOS
     case
     when form == Qnil
       Qnil
-    when eval_thunk(car(car(form)), bindings) != Qnil
+    when dethunk(eval_thunk(car(car(form)), bindings)) != Qnil
       eval(car(cdr(car(form))), bindings)
     else
       cond(cdr(form), bindings)
@@ -562,7 +562,7 @@ EOS
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      val = eval_thunk(args.car, bindings)
+      val = dethunk(eval_thunk(args.car, bindings))
       case
       when val == Qnil
         Qnil
@@ -582,7 +582,7 @@ EOS
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      val = eval_thunk(args.car, bindings)
+      val = dethunk(eval_thunk(args.car, bindings))
       if val != Qnil
         val
       else
