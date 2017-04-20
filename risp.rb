@@ -726,6 +726,11 @@ EOS
     arg
   end
 
+  subr("inspect", 1) do |arg|
+    puts arg.inspect
+    Qt
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
