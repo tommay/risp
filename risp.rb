@@ -201,9 +201,24 @@ EOS
     end
 
     def inspect
-      io = StringIO.new
-      write(io, false)
-      io.string
+      result = "("
+
+      nxt = self
+      while nxt != Qnil
+        result << nxt.car.inspect
+        nxt = nxt.cdr
+        case nxt
+        when Qnil
+        when Cell
+          result << " "
+        else
+          result << " . "
+          result << nxt.inspect
+          nxt = Qnil
+        end
+      end
+      
+      result << ")"
     end
 
     def write(io, dethunk = true)
