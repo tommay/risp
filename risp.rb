@@ -292,7 +292,7 @@ EOS
       case @state
       when :unevaluated
         @state = :in_progress
-        Risp.dethunk(Risp.eval_thunk(@form, @bindings)).tap do |result|
+        Risp.eval_thunk(@form, @bindings).tap do |result|
           @memo = result
           @state = :evaluated
         end
@@ -537,8 +537,12 @@ EOS
   end
 
   def self.dethunk(arg)
+    trampoline { _dethunk(arg) }
+  end
+
+  def self._dethunk(arg)
     if arg.is_a?(Thunk)
-      arg.eval
+      ->{ _dethunk(arg.eval) }
     else
       arg
     end
@@ -797,6 +801,17 @@ EOS
       raise Risp::Exception.new("Not a symbol: #{nonsymbols.first.inspect}")
     else
       raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:inspect).join(" ")}")
+    end
+  end
+
+  def self.trampoline(&block)
+    loop do
+      case block
+      when Proc
+        block = block.call
+      else
+        break block
+      end
     end
   end
 
