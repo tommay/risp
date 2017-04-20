@@ -119,3 +119,33 @@ zip (filter (==4) evens) ["a"]
 
 I think blowing the stack is due to a lack of tail-call optimization.
 I could possibly use trampolines to get around this.
+
+## Problems
+
+### Some things that don't diverge blow the stack:
+
+~~~~
+(nth 100 numbers1)
+(nth 100 numbers1a)
+(nth 100 (numbers 1))
+~~~~
+
+I've used a trampoline so arbitrarily long thunk/memo chains can be
+dethunked but the problem is more insidious.
+
+### Thunk memos blow the heap
+
+Thunk memos can make arbitrarily long chains and blow the heap because
+the are strongly referenced.  `WeakRef` doesn't help because the
+`WeakRef`s are aggressively garbage collected and don't live long enough
+to be effective.  SoftReferences are what's needed.  See commit
+6f9bd3a268fa8afd0837fc8cbdf8c1932bbd825f.
+
+Maybe do it in jruby and use java's SoftReferences.
+
+### `and`/`or` should iterate or use trampolines
+
+If/when everything works nicely and infinite lists don't cause
+problems, `and` and `or` should be changed from tail recursion
+to iteration or trampolines so they can handle arbitrarily long
+lists such as `(all? ...)` or `(any? ...)` might want.
