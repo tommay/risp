@@ -5,7 +5,6 @@ require "hamster/hash"
 require "readline"
 require "readline/history/restore"
 require "trollop"
-require "weakref"
 require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
@@ -294,31 +293,18 @@ EOS
       when :unevaluated
         @state = :in_progress
         Risp.eval_thunk(@form, @bindings).tap do |result|
-          @memo = WeakRef.new(result)
+          @memo = result
           @state = :evaluated
         end
       when :in_progress
         raise Risp::Exception.new("Infinite loop")
       when :evaluated
-        memo = getobj(@memo)
-        if memo
-          memo
-        else
-          @state = :unevaluated
-          eval
-        end
+        @memo
       end
     end
 
-    def getobj(weakref)
-      weakref && weakref.__getobj__
-    rescue WeakRef::RefError
-      nil
-    end
-
     def inspect
-      memo = getobj(@memo)
-      "[thunk: <#{memo && memo.inspect}> #{@form.inspect}, #{@bindings.inspect}]"
+      "[thunk: <#{@memo && @memo.inspect}> #{@form.inspect}, #{@bindings.inspect}]"
     end
 
     def write(io, dethunk = true)
