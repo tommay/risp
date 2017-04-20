@@ -61,11 +61,27 @@
    ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
    maker))
 
+;; Here are some simpler definitions for infinte number lists to make
+;; it easier to find code problems.
+
+(and
+  (define numbers1
+    (cons 1 (map (lambda (n) (+ n 1)) numbers1)))
+  'not-printed)
+
+(and
+  (define numbers1a
+    (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
+  'not-printed)
+
 (define (factorial n)
   (apply * (take n (numbers 1))))
 
 (define (factorial2 n)
   (apply * (take n (cdr (numbers 0)))))
+
+(define (triangle n)
+  (apply + (take n (numbers 1))))
 
 (define (reverse lst)
   (foldl (lambda (accum e) (cons e accum)) nil lst))
