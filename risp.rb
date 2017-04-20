@@ -601,7 +601,7 @@ EOS
   end
 
   subr("+") do |list|
-    fold_block(Number.new(0), list) do |memo, arg|
+    fold(Number.new(0), list) do |memo, arg|
       memo + dethunk(arg)
     end
   end
@@ -763,6 +763,23 @@ EOS
     when Cell
       new_memo = block.call(memo, list.car)
       fold_block(new_memo, list.cdr, &block)
+    else
+      raise Risp::Exception.new("Can't fold #{list.inspect}")
+    end
+  end
+
+  def self.fold(accum, list, &block)
+    trampoline { _fold(accum, list, block) }
+  end
+
+  def self._fold(accum, list, block)
+    list = dethunk(list)
+    case list
+    when Qnil
+      accum
+    when Cell
+      new_accum = block.call(accum, list.car)
+      ->{ _fold(new_accum, list.cdr, block) }
     else
       raise Risp::Exception.new("Can't fold #{list.inspect}")
     end
