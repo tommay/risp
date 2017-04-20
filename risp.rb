@@ -42,12 +42,8 @@ EOS
       if section !~ /^\s*$/
         eval(::Lepr.parse(section)).tap do |val|
           if do_print
-            if do_trace
-              puts val.to_s
-            else
-              val.write(STDOUT)
-              puts
-            end
+            val.write(STDOUT)
+            puts
           end
         end
       end
@@ -85,9 +81,7 @@ EOS
     end
 
     def inspect
-      io = StringIO.new
-      write(io, false)
-      io.string
+      to_s
     end
 
     def write(io, dethunk = true)
@@ -286,9 +280,14 @@ EOS
       @state = :unevaluated
       @form = form
       @bindings = bindings
+
+      if form.inspect == "(cons 1 (map (lambda (n) (+ n 1)) numbers1))"
+        @debug = 1
+      end
     end
 
     def eval
+#      binding.pry if @debug
       case @state
       when :unevaluated
         @state = :in_progress
@@ -308,7 +307,11 @@ EOS
     end
 
     def write(io, dethunk = true)
-      eval.write(io, dethunk)
+      # XXX if we don't dethunk we can get a long chain of thunks returning
+      # thunks and making deeply nested calls to write.  But is this is an
+      # ok place to dethunk?  Should eval do the dethunk itself?
+      # See commit 8fb6c578187beb89baeb0865a26845b81e98bd7e.
+      Risp.dethunk(eval).write(io, dethunk)
     end
   end
 
@@ -769,6 +772,10 @@ EOS
   end
 
   def self.fold(accum, list, &block)
+    if caller.size > 1000
+      puts caller.join("\n")
+      exit
+    end
     trampoline { _fold(accum, list, block) }
   end
 
@@ -849,12 +856,8 @@ class Lepr
       begin
         expr = parse(line)
         Risp.eval(expr).tap do |val|
-          if Risp.do_trace
-            puts val.to_s
-          else
-            val.write(STDOUT)
-            puts
-          end
+          val.write(STDOUT)
+          puts
         end
       rescue Risp::Exception => ex
         puts ex
