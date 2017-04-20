@@ -74,6 +74,13 @@
     (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
   'not-printed)
 
+;; And even simpler:
+
+(and
+  (define ones
+    (cons 1 ones))
+  'not-printed)
+
 (define (factorial n)
   (apply * (take n (numbers 1))))
 

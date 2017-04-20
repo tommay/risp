@@ -143,6 +143,20 @@ to be effective.  SoftReferences are what's needed.  See commit
 
 Maybe do it in jruby and use java's SoftReferences.
 
+### Blowing the heap but not the stack
+
+This will use arbitrary heap but limited stack:
+
+~~~~
+(nth 1000000 ones)
+~~~~
+
+This will blow the stack:
+
+~~~~
+(apply + (take 10000 ones))
+~~~~
+
 ### `and`/`or` should iterate or use trampolines
 
 If/when everything works nicely and infinite lists don't cause
