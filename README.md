@@ -157,6 +157,8 @@ This will blow the stack:
 (apply + (take 10000 ones))
 ~~~~
 
+Using the Y-combinator version, `yones`, has the same limitations.
+
 ### `and`/`or` should iterate or use trampolines
 
 If/when everything works nicely and infinite lists don't cause
