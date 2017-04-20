@@ -65,11 +65,13 @@
 ;; it easier to find code problems.
 
 (and
+  lazy?
   (define numbers1
     (cons 1 (map (lambda (n) (+ n 1)) numbers1)))
   'not-printed)
 
 (and
+  lazy?
   (define numbers1a
     (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
   'not-printed)
@@ -77,6 +79,7 @@
 ;; And even simpler:
 
 (and
+  lazy?
   (define ones
     (cons 1 ones))
   'not-printed)
@@ -140,13 +143,15 @@
 ;; they create infinite lists.
 
 (and
+  lazy?
   (define evens
      (cons 0 (map (lambda (a) (+ a 2)) evens)))
   'not-printed)
 
 (and
+  lazy?
   (define evens2
-    (map (lambda (a) (+ a 2)) (cons 0 evens)))
+    (map (lambda (a) (+ a 2)) (cons 0 evens2)))
   'not-printed)
 
 ;; factorial using the Y combinator:

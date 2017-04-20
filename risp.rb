@@ -13,10 +13,13 @@ module Risp
   @options = Trollop::options do
     banner <<EOS
 Usage: #{$0} [options] [file...]
-Run the risp repl to interpret my tiny lisp dialect with trict evaluation.
+Run the risp repl to interpret my tiny lisp dialect with lazy evaluation.
 EOS
+    opt :lazy, "Use lazy evaluation (default)"
+    opt :strict, "Use strict evaluation"
     opt :repl, "Run a repl after loading the files"
     opt :trace, "Print evaluation trace"
+    conflicts :lazy, :strict
   end
 
   def self.do_trace
@@ -430,6 +433,8 @@ EOS
   Qt = Symbol.intern("t")
   global(Qt, Qt)
 
+  global(Symbol.intern("lazy?"), @options.strict ? Qnil : Qt)
+
   def self.fsubr(name, nargs = nil, f_name = name, &block)
     global(Symbol.intern(name), Fsubr.new(name, nargs, &block))
     define_singleton_method(f_name.to_sym, &block)
@@ -509,7 +514,7 @@ EOS
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
-  fsubr("eval", 1) do |expr, bindings = Bindings.new|
+  send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = Bindings.new|
     case expr
     when Atom
       # Don't bother to make thunks just to look up atom bindings.
@@ -520,7 +525,11 @@ EOS
     when Thunk
       expr
     else
-      Thunk.new(expr, bindings)
+      if @options.strict
+        eval_thunk(expr, bindings)
+      else
+        Thunk.new(expr, bindings)
+      end
     end
   end
 
