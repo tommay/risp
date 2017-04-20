@@ -45,7 +45,7 @@ EOS
             if do_trace
               puts val.to_s
             else
-              val.print
+              val.write(STDOUT)
               puts
             end
           end
@@ -85,11 +85,13 @@ EOS
     end
 
     def inspect
-      to_s
+      io = StringIO.new
+      write(io, false)
+      io.string
     end
 
-    def print
-      Kernel.print(to_s)
+    def write(io, dethunk = true)
+      io.write(to_s)
     end
   end
 
@@ -198,65 +200,38 @@ EOS
       @cdr
     end
 
-    def inspect(ch = "(")
-      ch + 
-        if @car.is_a?(Cell)
-          @car.inspect("(")
-        else
-          @car.inspect
-        end +
-        case
-        when @cdr == Risp::Qnil
-          ")"
-        when @cdr.is_a?(Cell)
-          @cdr.inspect(" ")
-        else
-          " . " + @cdr.inspect + ")"
-        end
+    def inspect
+      io = StringIO.new
+      write(io, false)
+      io.string
     end
 
-    def to_s(ch = "(")
-      a = Risp.car(self)
-      ca =
-        if a.is_a?(Cell)
-          a.to_s("(")
+    def write(io, dethunk = true)
+      maybe_dethunk =
+        if dethunk
+          ->(val){Risp.dethunk(val)}
         else
-          a.to_s
+          ->(val){val}
         end
 
-      d = Risp.cdr(self)
-      cd =
-        case
-        when d == Risp::Qnil
-          ")"
-        when d.is_a?(Cell)
-          d.to_s(" ")
-        else
-          " . " + d.to_s + ")"
-        end
-
-      ch + ca + cd
-    end
-
-    def print
-      Kernel.print("(")
+      io.write("(")
 
       nxt = self
       while nxt != Qnil
-        Risp.dethunk(Risp.car(nxt)).print
-        nxt = Risp.dethunk(Risp.cdr(nxt))
+        maybe_dethunk[Risp.car(nxt)].write(io, dethunk)
+        nxt = maybe_dethunk[Risp.cdr(nxt)]
         case nxt
         when Qnil
         when Cell
-          Kernel.print(" ")
+          io.write(" ")
         else
-          Kernel.print(" . ")
-          nxt.print
+          io.write(" . ")
+          nxt.write(io, dethunk)
           nxt = Qnil
         end
       end
 
-      Kernel.print(")")
+      io.write(")")
     end
   end
 
@@ -279,18 +254,15 @@ EOS
     end
 
     def inspect
-      to_s(:inspect)
+      io = StringIO.new
+      write(io, false)
+      io.string
     end
 
-    def print
-      super("[(" + @symbol_array.map(&:to_s).join(" ") + ") => ")
-      @form.print
-      super("]")
-    end
-
-    def to_s(method = :to_s)
-      "[(" + @symbol_array.map(&method).join(" ") + ") => " +
-        @form.send(method) + "]"
+    def write(io, dethunk = true)
+      io.write("[(" + @symbol_array.map(&:to_s).join(" ") + ") => ")
+      @form.write(io, dethunk)
+      io.write("]")
     end
   end
 
@@ -317,15 +289,11 @@ EOS
     end
 
     def inspect
-      to_s(:inspect)
+      "[thunk: <#{@memo && @memo.inspect}> #{@form.inspect}, #{@bindings.inspect}]"
     end
 
-    def print
-      eval.print
-    end
-
-    def to_s(method = :to_s)
-      "[thunk: <#{@memo && @memo.send(method)}> #{@form.send(method)}, #{@bindings.send(method)}]"
+    def write(io, dethunk = true)
+      eval.write(io, dethunk)
     end
   end
 
@@ -359,14 +327,25 @@ EOS
     end
 
     def inspect
-      vals = @hash.flatten(0).map do |k, v|
-        "#{k.inspect}: #{v.inspect}"
+      # letrec creates bindings that contain themselves.  Here we
+      # detect cycles and just return "{...}".
+      if !@inspecting
+        @inspecting = true
+        begin
+          vals = @hash.flatten(0).map do |k, v|
+            "#{k.inspect}: #{v.inspect}"
+          end
+          "{" + vals.join(", ") + "}"
+        ensure
+          @inspecting = false
+        end
+      else
+        "{...}"
       end
-      "{" + vals.join(", ") + "}"
     end
 
-    def print
-      super(inspect)
+    def write(io, dethunk = true)
+      io.write(inspect)
     end
 
     # This is for letrec where we have to set the value after the
@@ -395,15 +374,11 @@ EOS
     end
 
     def inspect
-      to_s
-    end
-
-    def print
-      super(to_s)
-    end
-
-    def to_s
       "<#{self.class}: #{@name}>"
+    end
+
+    def write(io, dethunk = true)
+      io.write(inspect)
     end
   end
 
@@ -825,7 +800,7 @@ class Lepr
           if Risp.do_trace
             puts val.to_s
           else
-            val.print
+            val.write(STDOUT)
             puts
           end
         end
