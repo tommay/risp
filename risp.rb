@@ -284,6 +284,39 @@ EOS
     end
   end
 
+  class Macro
+    def initialize(symbol_array, form, name)
+      @symbol_array = symbol_array
+      @form = form
+      @name = name || form.inspect
+    end
+
+    def eval(args, bindings)
+      Risp.trace(->{"#{@name}#{args.inspect}"}) do
+        arg_array = Risp::to_array(args, @symbol_array.length)
+        # We are using the caller's bindings, this is so quasiquote, which
+        # is a macro, has access to the caller's bindings.  Probably
+        # not the right way to do it, but oh well.
+        new_bindings = @symbol_array.zip(arg_array).reduce(bindings) do |memo, (symbol, val)|
+          memo.bind(symbol, val)
+        end
+        Risp.eval_thunk(@form, new_bindings)
+      end
+    end
+
+    def inspect
+      io = StringIO.new
+      write(io, false)
+      io.string
+    end
+
+    def write(io, dethunk = true)
+      io.write("[macro (" + @symbol_array.map(&:to_s).join(" ") + ") => ")
+      @form.write(io, dethunk)
+      io.write("]")
+    end
+  end
+
   class Thunk
     def initialize(form, bindings)
       @state = :unevaluated
@@ -543,6 +576,11 @@ EOS
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
+  subr("macro?", 1) do |arg|
+    arg = dethunk(arg)
+    to_boolean(arg.is_a?(Macro))
+  end
+
   send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = @default_bindings|
     case expr
     when Atom
@@ -598,6 +636,8 @@ EOS
       fn.eval(eval_list(args, bindings), bindings)
     when Closure
       fn.eval(eval_list(args, bindings))
+    when Macro
+      fn.eval(args, bindings)
     else
       raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
     end
@@ -762,6 +802,20 @@ EOS
       end
     else
       raise Risp::Exception.new("Can't define #{args.inspect}")
+    end
+  end
+
+  fsubr("define-macro", 2) do |args, form|
+    case args
+    when Cell
+      name = args.car
+      symbol_array = to_array(args.cdr)
+      check_symbols(symbol_array)
+      Macro.new(symbol_array, form, name.to_s).tap do |macro|
+        global(name, macro)
+      end
+    else
+      raise Risp::Exception.new("Can't define-macro #{args.inspect}")
     end
   end
 
