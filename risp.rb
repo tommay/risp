@@ -254,10 +254,10 @@ EOS
       @name = name || form.inspect
     end
 
-    def eval(arg_list)
-      Risp.trace(->{"#{@name}#{arg_list.inspect}"}) do
-        args = Risp::to_array(arg_list, @symbol_array.length)
-        bindings = @symbol_array.zip(args).reduce(@bindings) do |memo, (symbol, val)|
+    def eval(args)
+      Risp.trace(->{"#{@name}#{args.inspect}"}) do
+        arg_array = Risp::to_array(args, @symbol_array.length)
+        bindings = @symbol_array.zip(arg_array).reduce(@bindings) do |memo, (symbol, val)|
           memo.bind(symbol, val)
         end
         Risp.eval(@form, bindings)
