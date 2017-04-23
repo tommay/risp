@@ -748,7 +748,7 @@ EOS
 
   subr("inspect", 1) do |arg|
     puts arg.inspect
-    Qt
+    arg
   end
 
   def self.to_boolean(arg)
