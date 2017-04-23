@@ -19,11 +19,16 @@ EOS
     opt :strict, "Use strict evaluation"
     opt :repl, "Run a repl after loading the files"
     opt :trace, "Print evaluation trace"
+    opt :debug, "Debug with binding.pry on exception"
     conflicts :lazy, :strict
   end
 
   def self.do_trace
     @options.trace
+  end
+
+  def self.do_debug
+    @options.debug
   end
 
   at_exit do
@@ -118,6 +123,7 @@ EOS
       Risp.trace(->{"#{name}"}) do
         get_binding(bindings).tap do |result|
           if !result
+            binding.pry if Risp.do_debug
             raise Risp::Exception.new("No binding for #{self.inspect}")
           end
         end
@@ -144,6 +150,7 @@ EOS
         when String
           thing.to_i
         else
+          binding.pry if Risp.do_debug
           raise "Bad arg to Number.new: #{thing.inspect}"
         end
     end
@@ -160,6 +167,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val + other.val)
       else
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Can't apply \"+\" to #{other.inspect}")
       end
     end
@@ -168,6 +176,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val - other.val)
       else
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Can't apply \"-\" to #{other.inspect}")
       end
     end
@@ -176,6 +185,7 @@ EOS
       if other.is_a?(Number)
         Number.new(self.val * other.val)
       else
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Can't apply \"*\" to #{other.inspect}")
       end
     end
@@ -338,6 +348,7 @@ EOS
           @state = :evaluated
         end
       when :in_progress
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Infinite loop")
       when :evaluated
         @memo
@@ -508,6 +519,7 @@ EOS
     if arg.is_a?(Cell)
       arg.car
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Bad arg to car: #{arg.inspect}")
     end
   end
@@ -517,6 +529,7 @@ EOS
     if arg.is_a?(Cell)
       arg.cdr
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Bad arg to cdr: #{arg.inspect}")
     end
   end
@@ -563,6 +576,7 @@ EOS
     when Symbol
       to_boolean(arg.get_binding(bindings))
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Bad arg to bound?: #{arg.inspect}")
     end
   end
@@ -611,6 +625,7 @@ EOS
       args = cdr(expr)
       apply(fn, args, bindings)
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Don't know how to eval #{expr.inspect}")
     end
   end
@@ -640,6 +655,7 @@ EOS
     when Macro
       fn.eval(args, bindings)
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
     end
   end
@@ -660,6 +676,7 @@ EOS
         f_and(args.cdr, bindings)
       end
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't do \"and\" with #{args.inspecct}")
     end
   end
@@ -677,6 +694,7 @@ EOS
         f_or(args.cdr, bindings)
       end
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't apply \"and\" to #{args.inspect}")
     end
   end
@@ -702,9 +720,11 @@ EOS
           end
         end
       else
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Can't apply \"-\" to #{val.inspect}")
       end
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't apply \"-\" to #{list.inspect}")
     end
   end
@@ -802,6 +822,7 @@ EOS
         global(name, closure)
       end
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't define #{args.inspect}")
     end
   end
@@ -816,6 +837,7 @@ EOS
         global(name, macro)
       end
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't define-macro #{args.inspect}")
     end
   end
@@ -854,6 +876,7 @@ EOS
       memo << element
     end.tap do |array|
       if length && array.length != length
+        binding.pry if Risp.do_debug
         raise Risp::Exception.new("Expected #{length} arguments, got #{array.length}")
       end
     end
@@ -868,6 +891,7 @@ EOS
       new_memo = block.call(memo, list.car)
       fold_block(new_memo, list.cdr, &block)
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't fold #{list.inspect}")
     end
   end
@@ -889,6 +913,7 @@ EOS
       new_accum = block.call(accum, list.car)
       ->{ _fold(new_accum, list.cdr, block) }
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't fold #{list.inspect}")
     end
   end
@@ -901,6 +926,7 @@ EOS
     when Cell
       cons(block.call(list.car), map_block(list.cdr, &block))
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Can't map #{list.inspect}")
     end
   end
@@ -923,8 +949,10 @@ EOS
     when 0
       # Ok
     when 1
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Not a symbol: #{nonsymbols.first.inspect}")
     else
+      binding.pry if Risp.do_debug
       raise Risp::Exception.new("Not symbols: #{nonsymbols.map(&:inspect).join(" ")}")
     end
   end
