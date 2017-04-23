@@ -110,9 +110,13 @@ EOS
       @name
     end
 
+    def get_binding(bindings)
+      bindings.get(self) || Risp.global_bindings.get(self)
+    end
+
     def eval(bindings)
       Risp.trace(->{"#{name}"}) do
-        (bindings.get(self) || Risp.global_bindings.get(self)).tap do |result|
+        get_binding(bindings).tap do |result|
           if !result
             raise Risp::Exception.new("No binding for #{self.inspect}")
           end
@@ -512,6 +516,16 @@ EOS
   subr("atom?", 1) do |arg|
     arg = dethunk(arg)
     to_boolean(arg.is_a?(Atom))
+  end
+
+  subr("bound?", 1) do |arg, bindings|
+    arg = dethunk(arg)
+    case arg
+    when Symbol
+      to_boolean(arg.get_binding(bindings))
+    else
+      raise Risp::Exception.new("Bad arg to bound?: #{arg.inspect}")
+    end
   end
 
   subr("cons?", 1) do |arg|
