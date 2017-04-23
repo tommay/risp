@@ -492,6 +492,7 @@ EOS
   Qunquote_splicing = Symbol.intern("unquote-splicing")
   Qdo_macros = Symbol.intern("do-macros")
   Qinspect = Symbol.intern("inspect")
+  Qpry = Symbol.intern("pry")
 
   global(Symbol.intern("lazy?"), @options.strict ? Qnil : Qt)
 
@@ -1043,6 +1044,10 @@ class Lepr
       Risp::to_list(
         Risp::Qinspect,
         parse_expr(source))
+    when "!"
+      Risp::to_list(
+        Risp::Qpry,
+        parse_expr(source))
     end
   end
 
@@ -1069,7 +1074,7 @@ class Lepr
     def self.new(string)
       Enumerator.new do |y|
         # This relies on regexp taking the first match not the longest match.
-        string.scan(/\s*(,@|[()',`@]|[^()\s]+)/) do |(token)|
+        string.scan(/\s*(,@|[()',`@!]|[^()\s]+)/) do |(token)|
           y << token
         end
         y << :eof
