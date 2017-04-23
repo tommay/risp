@@ -438,6 +438,11 @@ EOS
   Qt = Symbol.intern("t")
   global(Qt, Qt)
 
+  Qquote = Symbol.intern("quote")
+  Qquasiquote = Symbol.intern("quasiquote")
+  Qunquote = Symbol.intern("unquote")
+  Qunquote_splicing = Symbol.intern("unquote-splicing")
+
   global(Symbol.intern("lazy?"), @options.strict ? Qnil : Qt)
 
   def self.fsubr(name, nargs = nil, f_name = name, &block)
@@ -907,19 +912,19 @@ class Lepr
     case token
     when "'"
       Risp::to_list(
-        Risp::Symbol.intern("quote"),
+        Risp::Qquote,
         parse_expr(source))
     when "`"
       Risp::to_list(
-        Risp::Symbol.intern("quasiquote"),
+        Risp::Qquasiquote,
         parse_expr(source))
     when ","
       Risp::to_list(
-        Risp::Symbol.intern("unquote"),
+        Risp::Qunquote,
         parse_expr(source))
     when ",@"
       Risp::to_list(
-        Risp::Symbol.intern("unquote-splicing"),
+        Risp::Qunquote_splicing,
         parse_expr(source))
     end
   end
