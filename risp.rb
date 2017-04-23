@@ -310,7 +310,7 @@ EOS
         new_bindings = @symbol_array.zip(arg_array).reduce(bindings) do |memo, (symbol, val)|
           memo.bind(symbol, val)
         end
-        Risp.eval_thunk(@form, new_bindings)
+        Risp.true_eval(@form, new_bindings)
       end
     end
 
@@ -343,7 +343,7 @@ EOS
       case @state
       when :unevaluated
         @state = :in_progress
-        Risp.eval_thunk(@form, @bindings).tap do |result|
+        Risp.true_eval(@form, @bindings).tap do |result|
           @memo = result
           @state = :evaluated
         end
@@ -542,7 +542,7 @@ EOS
     case
     when form == Qnil
       Qnil
-    when dethunk(eval_thunk(car(car(form)), bindings)) != Qnil
+    when dethunk(true_eval(car(car(form)), bindings)) != Qnil
       eval(car(cdr(car(form))), bindings)
     else
       cond(cdr(form), bindings)
@@ -608,20 +608,20 @@ EOS
       expr
     else
       if @options.strict
-        eval_thunk(expr, bindings)
+        true_eval(expr, bindings)
       else
         Thunk.new(expr, bindings)
       end
     end
   end
 
-  def self.eval_thunk(expr, bindings)
+  def self.true_eval(expr, bindings)
     expr = dethunk(expr)
     case expr
     when Atom
       expr.eval(bindings)
     when Cell
-      fn = eval_thunk(car(expr), bindings)
+      fn = true_eval(car(expr), bindings)
       args = cdr(expr)
       apply(fn, args, bindings)
     else
@@ -666,7 +666,7 @@ EOS
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      val = dethunk(eval_thunk(args.car, bindings))
+      val = dethunk(true_eval(args.car, bindings))
       case
       when val == Qnil
         Qnil
@@ -687,7 +687,7 @@ EOS
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      val = dethunk(eval_thunk(args.car, bindings))
+      val = dethunk(true_eval(args.car, bindings))
       if val != Qnil
         val
       else
