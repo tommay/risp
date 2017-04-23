@@ -112,8 +112,11 @@ EOS
 
     def eval(bindings)
       Risp.trace(->{"#{name}"}) do
-        bindings.get(self) || Risp.global_bindings.get(self) or
-          raise Risp::Exception.new("No binding for #{self.inspect}")
+        (bindings.get(self) || Risp.global_bindings.get(self)).tap do |result|
+          if !result
+            raise Risp::Exception.new("No binding for #{self.inspect}")
+          end
+        end
       end
     end
 
