@@ -885,41 +885,64 @@ class Lepr
 
   def self.parse_expr(source)
     token = source.next
+    special = parse_special(token, source)
+    if special
+      special
+    else
+      case token
+      when "("
+        parse_list(source, Risp::Qnil)
+      else
+        Risp::Atom.new(token)
+      end
+    end
+  end
+
+  def self.parse_special(token, source)
     case token
     when "'"
       Risp::to_list(
         Risp::Symbol.intern("quote"),
         parse_expr(source))
-    when "("
-      parse_list(source, Risp::Qnil)
-    else
-      Risp::Atom.new(token)
+    when "`"
+      Risp::to_list(
+        Risp::Symbol.intern("quasiquote"),
+        parse_expr(source))
+    when ","
+      Risp::to_list(
+        Risp::Symbol.intern("unquote"),
+        parse_expr(source))
+    when ",@"
+      Risp::to_list(
+        Risp::Symbol.intern("unquote-splicing"),
+        parse_expr(source))
     end
   end
 
   def self.parse_list(source, list)
     token = source.next
-    case token
-    when "'"
-      quoted = Risp::to_list(
-        Risp::Symbol.intern("quote"),
-        parse_expr(source))
-      parse_list(source, Risp::cons(quoted, list))
-    when "("
-      sublist = parse_list(source, Risp::Qnil)
-      parse_list(source, Risp::cons(sublist, list))
-    when ")"
-      Risp::reverse(list)
+    special = parse_special(token, source)
+    if special
+      parse_list(source, Risp::cons(special, list))
     else
-      atom = Risp::Atom.new(token)
-      parse_list(source, Risp::cons(atom, list))
+      case token
+      when "("
+        sublist = parse_list(source, Risp::Qnil)
+        parse_list(source, Risp::cons(sublist, list))
+      when ")"
+        Risp::reverse(list)
+      else
+        atom = Risp::Atom.new(token)
+        parse_list(source, Risp::cons(atom, list))
+      end
     end
   end
 
   class Lexer
     def self.new(string)
       Enumerator.new do |y|
-        string.scan(/\s*([()']|[^()'\s]+)/) do |(token)|
+        # This relies on regexp taking the first match not the longest match.
+        string.scan(/\s*(,@|[()',`]|[^()\s]+)/) do |(token)|
           y << token
         end
         y << :eof
