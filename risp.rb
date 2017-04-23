@@ -413,7 +413,9 @@ EOS
     include Builtin
   end
 
-  @global_bindings = Bindings.new
+  @default_bindings = Bindings.new
+
+  @global_bindings = @default_bindings
 
   def self.global_bindings
     @global_bindings
@@ -517,7 +519,7 @@ EOS
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
-  send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = Bindings.new|
+  send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = @default_bindings|
     case expr
     when Atom
       # Don't bother to make thunks just to look up atom bindings.
