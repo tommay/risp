@@ -736,7 +736,7 @@ EOS
     end
   end
 
-  subr("pry", 1) do |arg|
+  subr("pry", 1) do |arg, bindings|
     binding.pry
     arg
   end
