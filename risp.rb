@@ -15,6 +15,7 @@ module Risp
 Usage: #{$0} [options] [file...]
 Run the risp repl to interpret my tiny lisp dialect with trict evaluation.
 EOS
+    opt :repl, "Run a repl after loading the files"
     opt :trace, "Print evaluation trace"
   end
 
@@ -25,12 +26,10 @@ EOS
   at_exit do
     # Currently this has to be true because printing causes the
     # expression's thunks to be evaluated.
-    execute("prelude.risp", true)
-    if ARGV.size != 0
-      ARGV.each do |file|
-        execute(file, true)
-      end
-    else
+    (["prelude.risp"] + ARGV).each do |file|
+      execute(file, true)
+    end
+    if @options.repl || ARGV.length == 0
       ::Lepr.repl
     end
   end
