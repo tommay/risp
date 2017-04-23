@@ -518,6 +518,11 @@ EOS
     to_boolean(arg.is_a?(Atom))
   end
 
+  subr("symbol?", 1) do |arg|
+    arg = dethunk(arg)
+    to_boolean(arg.is_a?(Symbol))
+  end
+
   subr("bound?", 1) do |arg, bindings|
     arg = dethunk(arg)
     case arg
