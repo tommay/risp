@@ -1,3 +1,61 @@
+;; The repl calls do-macros on the form before evaluating it.  Put
+;; this first so it can be used for everything else.
+
+;; There's a bit of a problem here.  Suppose the user enters:
+;; (define-macro (p1 n) `(+ ,n 1))
+;; Which the reader turns into
+;; (define-macro (p1 n) (quasiquote (+ (unquote n) 1))
+;; If we then run dp-macros on it before evaluation then 
+;; the quasiquote will be handled on the spot and we evaluate
+;; (define-macro (p1 n) (+ n 1))
+;; Clearly we don't want do-macros to evaluate the quasiuote.
+;; Also if we want to be able to redefine p1 then it can't
+;; expand p1 in the argument list.
+;; The solution for now is just don't expand macros within a
+;; define-macro.  Note that this code treats define-macro as
+;; a quote anywhere in the form.
+
+(define (do-macros form)
+  (cond
+   ((atom? form)
+    form)
+   ((eq (car form) 'quote)
+    form)
+   ((eq (car form) 'define-macro)
+    form)
+   ((and
+      (symbol? (car form))
+      (bound? (car form))
+      (macro? (eval (car form))))
+    (do-macros (eval form)))
+   (t
+    (map do-macros form))))
+
+;; And the implementation for quasiquote and friends which the reader
+;; puts in when "`", ",", and ",@" are used.
+
+(define-macro (quasiquote form)
+  (cond
+   ((atom? form) form)
+   ((eq (car form) 'unquote)
+    (eval (car (cdr form))))
+   ((and
+      (list? (car form))
+      (eq (car (car form)) 'unquote-splicing))
+    (append
+      (eval (car (cdr (car form))))
+      (apply quasiquote (list (cdr form)))))
+   (t
+    (cons
+      (apply quasiquote (list (car form)))
+      (apply quasiquote (list (cdr form)))))))
+
+(define-macro (unquote _)
+  (error "unquote is just a marker for quasiquote"))
+
+(define-macro (unquote-splicing _)
+  (error "unquote-splicing is just a marker for quasiquote"))
+
 (define (_map fn lst)
   (cond
    ((null? lst) nil)

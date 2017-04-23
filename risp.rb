@@ -479,6 +479,7 @@ EOS
   Qquasiquote = Symbol.intern("quasiquote")
   Qunquote = Symbol.intern("unquote")
   Qunquote_splicing = Symbol.intern("unquote-splicing")
+  Qdo_macros = Symbol.intern("do-macros")
 
   global(Symbol.intern("lazy?"), @options.strict ? Qnil : Qt)
 
@@ -829,6 +830,15 @@ EOS
     arg
   end
 
+  def self.do_macros(form)
+    if bound?(Qdo_macros, @default_bindings) == Qt
+      apply(eval(Qdo_macros, @default_bindings),
+            to_list(cons(Qquote, to_list(form))), @default_bindings)
+    else
+      form
+    end
+  end
+
   def self.to_boolean(arg)
     arg ? Qt : Qnil
   end
@@ -945,8 +955,9 @@ class Lepr
   def self.repl
     while line = Readline.readline('> ', true)
       begin
-        expr = parse(line)
-        Risp.eval(expr).tap do |val|
+        form = parse(line)
+        expanded = Risp::do_macros(form)
+        Risp.eval(expanded).tap do |val|
           val.write(STDOUT)
           puts
         end
