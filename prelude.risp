@@ -1,3 +1,9 @@
+;; Look, t and nil can be bound here instead of in the ruby code!
+
+(define t 't)
+
+(define nil 'nil)
+
 ;; The repl calls do-macros on the form before evaluating it.  Put
 ;; this first so it can be used for everything else.
 

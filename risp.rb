@@ -474,7 +474,6 @@ EOS
   end
 
   Qnil = Symbol.intern("nil")
-  global(Qnil, Qnil)
 
   # Make Qnil show up as "Qnil" in the debugger to differntiate it
   # from ruby's nil.
@@ -484,7 +483,6 @@ EOS
   end
 
   Qt = Symbol.intern("t")
-  global(Qt, Qt)
 
   Qquote = Symbol.intern("quote")
   Qquasiquote = Symbol.intern("quasiquote")
