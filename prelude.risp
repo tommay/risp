@@ -11,15 +11,15 @@
 ;; (define-macro (p1 n) `(+ ,n 1))
 ;; Which the reader turns into
 ;; (define-macro (p1 n) (quasiquote (+ (unquote n) 1))
-;; If we then run dp-macros on it before evaluation then 
-;; the quasiquote will be handled on the spot and we evaluate
-;; (define-macro (p1 n) (+ n 1))
-;; Clearly we don't want do-macros to evaluate the quasiuote.
-;; Also if we want to be able to redefine p1 then it can't
-;; expand p1 in the argument list.
+;; When we run do-macros on it before evaluation then 
+;; the quasiquote will be handled on the spot and do-macros
+;; returns (define-macro (p1 n) (+ n 1)) which is not what
+;; we want.  Clearly we don't want do-macros to evaluate the
+;; quasiuote.   Also if we want to be able to redefine p1 then
+;  so-macros can't expand p1 in the argument list.
 ;; The solution for now is just don't expand macros within a
 ;; define-macro.  Note that this code treats define-macro as
-;; a quote anywhere in the form.
+;; quote anywhere in the form.
 
 (define (do-macros form)
   (cond
@@ -39,28 +39,49 @@
 
 ;; And the implementation for quasiquote and friends which the reader
 ;; puts in when "`", ",", and ",@" are used.
+;; quasiquote is a macro so it can't just be used like a function below
+;; because (quasiquote something) doesn't evaluate something it just
+;; returns something, same as quote.  Using (apply quasiquote something)
+;; works because apply evaluates its arguments.  However, it wants a
+;; list of arguments to apply quasiquote to, so the thing to do is
+;; (apply quasiquote (list something)) which will evaluate the something
+;; and pass the result as the single argument to quasiquote.
 
-(define-macro (quasiquote form)
+;; A problem, and a workaround.  This simple macro should just return
+;; its argument:
+;; (define-macro (simple form) `,form)
+;; But when this clause matches and runs:
+;;   ((eq (car form) 'unquote)
+;;    (eval (car (cdr form))))
+;; form is bound to "(unqute form)" from the simple macro and
+;; (car (cdr form)) is "form" so we fo (eval form) which returns
+;; the binding of form from quasiquote not from simple.  The workaround
+;; is to call "form" something more unusual in quasiquote so there
+;; hopefully won't be collisions.  Or quasiquote could be done in ruby.
+
+(define-macro (quasiquote -form-)
   (cond
-   ((atom? form) form)
-   ((eq (car form) 'unquote)
-    (eval (car (cdr form))))
-   ((and
-      (list? (car form))
-      (eq (car (car form)) 'unquote-splicing))
+   ((atom? -form-) -form-)
+   ((eq (car -form-) 'unquote)
+    (eval (car (cdr -form-))))
+   ((atom? (car -form-))
+    (cons (car -form-) (apply quasiquote (list (cdr -form-)))))
+   ((eq (car (car -form-)) 'unquote-splicing)
     (append
-      (eval (car (cdr (car form))))
-      (apply quasiquote (list (cdr form)))))
+      (eval (car (cdr (car -form-))))
+      (apply quasiquote (list (cdr -form-)))))
    (t
     (cons
-      (apply quasiquote (list (car form)))
-      (apply quasiquote (list (cdr form)))))))
+     (apply quasiquote (list (car -form-)))
+     (apply quasiquote (list (cdr -form-)))))))
 
-(define-macro (unquote _)
-  (error "unquote is just a marker for quasiquote"))
+;; unquote and unquote-splicing are just markers for quasiquote.
 
-(define-macro (unquote-splicing _)
-  (error "unquote-splicing is just a marker for quasiquote"))
+(define (unquote form)
+  (blow-chunks form))
+
+(define (unquote-splicing form)
+  (blow-chunking form))
 
 (define (_map fn lst)
   (cond
