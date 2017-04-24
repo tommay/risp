@@ -997,7 +997,7 @@ class Lepr
 
   def self.parse(string)
     source = Lexer.new(string)
-    parse_expr(source).tap do |blah|
+    parse_sexp(source).tap do |blah|
       token = source.next
       if token != :eof
         raise Risp::Exception.new("Expected EOF, got #{token}")
@@ -1005,7 +1005,7 @@ class Lepr
     end
   end
 
-  def self.parse_expr(source)
+  def self.parse_sexp(source)
     token = source.next
     special = parse_special(token, source)
     if special
@@ -1025,27 +1025,27 @@ class Lepr
     when "'"
       Risp::to_list(
         Risp::Qquote,
-        parse_expr(source))
+        parse_sexp(source))
     when "`"
       Risp::to_list(
         Risp::Qquasiquote,
-        parse_expr(source))
+        parse_sexp(source))
     when ","
       Risp::to_list(
         Risp::Qunquote,
-        parse_expr(source))
+        parse_sexp(source))
     when ",@"
       Risp::to_list(
         Risp::Qunquote_splicing,
-        parse_expr(source))
+        parse_sexp(source))
     when "@"
       Risp::to_list(
         Risp::Qinspect,
-        parse_expr(source))
+        parse_sexp(source))
     when "!"
       Risp::to_list(
         Risp::Qpry,
-        parse_expr(source))
+        parse_sexp(source))
     end
   end
 
