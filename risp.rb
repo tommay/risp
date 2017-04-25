@@ -23,6 +23,10 @@ EOS
     conflicts :lazy, :strict
   end
 
+  def self.do_lazy
+    !@options.strict
+  end
+
   def self.do_trace
     @options.trace
   end
@@ -498,7 +502,7 @@ EOS
   Qinspect = Symbol.intern("inspect")
   Qpry = Symbol.intern("pry")
 
-  global(Symbol.intern("lazy?"), @options.strict ? Qnil : Qt)
+  global(Symbol.intern("lazy?"), do_lazy ? Qt : Qnil)
 
   def self.fsubr(name, nargs = nil, f_name = name, &block)
     global(Symbol.intern(name), Fsubr.new(name, nargs, &block))
@@ -602,7 +606,7 @@ EOS
     to_boolean(arg.is_a?(Macro))
   end
 
-  send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = @default_bindings|
+  send(do_lazy ? :fsubr : :subr, "eval", 1) do |expr, bindings = @default_bindings|
     begin
       case expr
       when Atom
@@ -614,10 +618,10 @@ EOS
       when Thunk
         expr
       else
-        if @options.strict
-          true_eval(expr, bindings)
-        else
+        if do_lazy
           Thunk.new(expr, bindings)
+        else
+          true_eval(expr, bindings)
         end
       end
     rescue Risp::Exception
