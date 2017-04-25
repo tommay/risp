@@ -1000,13 +1000,14 @@ class Lepr
           puts
         end
       rescue Risp::Exception => ex
-        show_with_cause = lambda do |ex|
-          if ex
-            show_with_cause.call(ex.cause)
+        show_original_cause = lambda do |ex|
+          if !ex.cause
             puts ex
+          else
+            show_original_cause.call(ex.cause)
           end
         end
-        show_with_cause.call(ex)
+        show_original_cause.call(ex)
       end
     end
   end
