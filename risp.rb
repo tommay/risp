@@ -279,6 +279,8 @@ EOS
         end
         Risp.eval(@form, bindings)
       end
+    rescue Risp::Exception
+      raise Risp::Exception.new("in #{@name}#{args.inspect}")
     end
 
     def inspect
@@ -353,6 +355,8 @@ EOS
       when :evaluated
         @memo
       end
+    rescue Risp::Exception
+      raise Risp::Exception.new("in thunk #{@form.inspect}")
     end
 
     def inspect
@@ -442,6 +446,8 @@ EOS
           @block.call(args, bindings)
         end
       end
+    rescue Risp::Exception
+      raise Risp::Exception.new("in #{self.inspect}#{args.inspect}")
     end
 
     def inspect
@@ -597,22 +603,26 @@ EOS
   end
 
   send(@options.strict ? :subr : :fsubr, "eval", 1) do |expr, bindings = @default_bindings|
-    case expr
-    when Atom
-      # Don't bother to make thunks just to look up atom bindings.
-      # Assume the global_bindings won't change while we're evaluating
-      # an expression. Numbers certainly never change.  Neither should
-      # Qt and Qnil.
-      expr.eval(bindings)
-    when Thunk
-      expr
-    else
-      if @options.strict
-        true_eval(expr, bindings)
+    begin
+      case expr
+      when Atom
+        # Don't bother to make thunks just to look up atom bindings.
+        # Assume the global_bindings won't change while we're evaluating
+        # an expression. Numbers certainly never change.  Neither should
+        # Qt and Qnil.
+        expr.eval(bindings)
+      when Thunk
+        expr
       else
-        Thunk.new(expr, bindings)
+        if @options.strict
+          true_eval(expr, bindings)
+        else
+          Thunk.new(expr, bindings)
+        end
       end
-    end
+    rescue Risp::Exception
+      raise Risp::Exception.new("in #{expr.inspect}")
+   end
   end
 
   def self.true_eval(expr, bindings)
@@ -968,7 +978,7 @@ EOS
     end
   end
 
-  class Exception < ::Exception
+  class Exception < StandardError
     def initialize(message)
       @message = message
     end
@@ -990,7 +1000,13 @@ class Lepr
           puts
         end
       rescue Risp::Exception => ex
-        puts ex
+        show_with_cause = lambda do |ex|
+          if ex
+            show_with_cause.call(ex.cause)
+            puts ex
+          end
+        end
+        show_with_cause.call(ex)
       end
     end
   end
