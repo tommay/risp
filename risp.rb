@@ -998,7 +998,7 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         form = parse(line)
-        expanded = Risp::do_macros(form)
+        expanded = Risp.lazy? ? form : Risp::do_macros(form)
         Risp.eval(expanded).tap do |val|
           val.write(STDOUT)
           puts
