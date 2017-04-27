@@ -1006,7 +1006,7 @@ class Lepr
         end
       rescue Risp::Exception => ex
         show_original_cause = lambda do |ex|
-          if !ex.cause
+          if !ex.cause || !(ex.cause.is_a?(Risp::Exception))
             puts ex
           else
             show_original_cause.call(ex.cause)
