@@ -297,6 +297,8 @@ EOS
     def write(io, dethunk = true)
       io.write("[(" + @symbol_array.map(&:to_s).join(" ") + ") => ")
       @form.write(io, dethunk)
+      io.write(" ")
+      io.write(@bindings.inspect)
       io.write("]")
     end
   end
@@ -857,6 +859,14 @@ EOS
     end
   end
 
+  subr("gensym", 0) do
+    @gensym_count ||= 0
+    @gensym_count += 1
+    # Note gensyms are not interned, so a gensym will be different
+    # from anoy other Symbol even if they have the same name.
+    Symbol.new("##{@gensym_count}")
+  end
+
   subr("pry", 1) do |arg, bindings|
     binding.pry
     arg
@@ -999,7 +1009,7 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         form = parse(line)
-        expanded = Risp.lazy? ? form : Risp::do_macros(form)
+        expanded = (true || Risp.lazy?) ? form : Risp::do_macros(form)
         Risp.eval(expanded).tap do |val|
           val.write(STDOUT)
           puts
