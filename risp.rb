@@ -51,11 +51,12 @@ EOS
     no_comments = file.gsub(/;.*/, "")
     no_comments.split(/\n{2,}/).each do |section|
       if section !~ /^\s*$/
-        eval(::Lepr.parse(section)).tap do |val|
-          if do_print
-            val.write(STDOUT)
-            puts
-          end
+        form = ::Lepr.parse(section)
+        expanded = Risp.lazy? ? form : do_macros(form)
+        result = eval(expanded)
+        if do_print
+          result.write(STDOUT)
+          puts
         end
       end
     end
