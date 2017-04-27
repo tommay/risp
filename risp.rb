@@ -1024,6 +1024,8 @@ class Lepr
         raise Risp::Exception.new("Expected EOF, got #{token}")
       end
     end
+  rescue StopIteration
+    raise Risp::Exception.new("Incomplete expression")
   end
 
   def self.parse_sexp(source)
