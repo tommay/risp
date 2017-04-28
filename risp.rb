@@ -135,10 +135,6 @@ EOS
       end
     end
 
-    def ==(other)
-      other.is_a?(Symbol) && self.name == other.name
-    end
-
     def to_s
       name
     end
