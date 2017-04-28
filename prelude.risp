@@ -176,6 +176,13 @@
 (define (reverse lst)
   (foldl (lambda (accum e) (cons e accum)) nil lst))
 
+(define (equal a b)
+  (cond
+   ((atom? a) (eq a b))
+   ((atom? b) nil)
+   (t
+    (and (equal (car a) (car b)) (equal (cdr a) (cdr b))))))
+
 ;; This only works right with lazy evaluation.
 
 (define (if bool then else)
