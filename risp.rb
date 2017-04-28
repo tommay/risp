@@ -512,17 +512,17 @@ EOS
     define_singleton_method(f_name.to_sym, &block)
   end
 
-  fsubr("quote", 1) do |arg|
+  fsubr("quote", 1) do |arg, bindings = nil|
     arg
   end
   
-  subr("eq", 2) do |x, y|
+  subr("eq", 2) do |x, y, bindings = nil|
     to_boolean((x = dethunk(x)).is_a?(Atom) &&
                (y = dethunk(y)).is_a?(Atom) &&
                x == y)
   end
 
-  subr("car", 1) do |arg|
+  subr("car", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     if arg.is_a?(Cell)
       arg.car
@@ -532,7 +532,7 @@ EOS
     end
   end
 
-  subr("cdr", 1) do |arg|
+  subr("cdr", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     if arg.is_a?(Cell)
       arg.cdr
@@ -542,7 +542,7 @@ EOS
     end
   end
 
-  subr("cons", 2) do |x, y|
+  subr("cons", 2) do |x, y, bindings = nil|
     Cell.new(x, y)
   end
 
@@ -563,17 +563,17 @@ EOS
     Closure.new(symbol_array, form, bindings, name)
   end
 
-  subr("null?", 1) do |arg|
+  subr("null?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg == Qnil)
   end
 
-  subr("atom?", 1) do |arg|
+  subr("atom?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg.is_a?(Atom))
   end
 
-  subr("symbol?", 1) do |arg|
+  subr("symbol?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg.is_a?(Symbol))
   end
@@ -589,17 +589,17 @@ EOS
     end
   end
 
-  subr("cons?", 1) do |arg|
+  subr("cons?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg.is_a?(Cell))
   end
 
-  subr("list?", 1) do |arg|
+  subr("list?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg == Qnil || arg.is_a?(Cell))
   end
 
-  subr("macro?", 1) do |arg|
+  subr("macro?", 1) do |arg, bindings = nil|
     arg = dethunk(arg)
     to_boolean(arg.is_a?(Macro))
   end
@@ -711,13 +711,13 @@ EOS
     end
   end
 
-  subr("+") do |list|
+  subr("+") do |list, bindings = nil|
     fold(Number.new(0), list) do |memo, arg|
       memo + dethunk(arg)
     end
   end
 
-  subr("-") do |list|
+  subr("-") do |list, bindings = nil|
     list = dethunk(list)
     case list
     when Cell
@@ -741,13 +741,13 @@ EOS
     end
   end
 
-  subr("*") do |list|
+  subr("*") do |list, bindings = nil|
     fold_block(Number.new(1), list) do |memo, arg|
       memo * dethunk(arg)
     end
   end
 
-  subr("list", nil) do |list|
+  subr("list", nil) do |list, bindings = nil|
     dethunk(list)
   end
 
@@ -839,7 +839,7 @@ EOS
     end
   end
 
-  fsubr("define-macro", 2) do |args, form|
+  fsubr("define-macro", 2) do |args, form, bindings = nil|
     case args
     when Cell
       name = args.car
@@ -854,7 +854,7 @@ EOS
     end
   end
 
-  subr("gensym", 0) do
+  subr("gensym", 0) do |bindings = nil|
     @gensym_count ||= 0
     @gensym_count += 1
     # Note gensyms are not interned, so a gensym will be different
@@ -862,17 +862,17 @@ EOS
     Symbol.new("##{@gensym_count}")
   end
 
-  subr("pry", 1) do |arg, bindings|
+  subr("pry", 1) do |arg, bindings = nil|
     binding.pry
     arg
   end
 
-  subr("inspect", 1) do |arg|
+  subr("inspect", 1) do |arg, bindings = nil|
     puts arg.inspect
     arg
   end
 
-  subr("trace-on", 0) do |bindings|
+  subr("trace-on", 0) do |bindings = nil|
     @tracing = true
     Qt
   end
