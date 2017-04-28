@@ -27,8 +27,9 @@ EOS
     !@options.strict
   end
 
+  @tracing = @options.trace
   def self.trace?
-    @options.trace
+    @tracing
   end
 
   def self.debug?
@@ -62,22 +63,20 @@ EOS
     end
   end
 
-  if trace?
-    @indent = ""
-    def self.trace(string_proc, &block)
+  @indent = ""
+  def self.trace(string_proc, &block)
+    if trace?
       indent = @indent
-      puts "#{indent}#{string_proc.call} {"
+      STDERR.puts "#{indent}#{string_proc.call} {"
       @indent += "  "
       begin
         block.call.tap do |result|
-          puts "#{indent}} => #{result.inspect}"
+          STDERR.puts "#{indent}} => #{result.inspect}"
         end
       ensure
         @indent = indent
       end
-    end
-  else
-    def self.trace(string_proc, &block)
+    else
       block.call
     end
   end
@@ -871,6 +870,11 @@ EOS
   subr("inspect", 1) do |arg|
     puts arg.inspect
     arg
+  end
+
+  subr("trace-on", 0) do |bindings|
+    @tracing = true
+    Qt
   end
 
   def self.do_macros(form)
