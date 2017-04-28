@@ -106,26 +106,20 @@
      (apply quasiquote (list (car -form-)))
      (apply quasiquote (list (cdr -form-)))))))
 
-;; unquote and unquote-splicing are just markers for quasiquote.
-
-(define (unquote form)
-  (blow-chunks form))
-
-(define (unquote-splicing form)
-  (blow-chunking form))
-
-(define (_map fn lst)
-  (cond
-   ((null? lst) nil)
-   (t
-    (cons (fn (car lst)) (_map fn (cdr lst))))))
-
 (define (take n lst)
   (cond
    ((eq n 0) nil)
    ((null? lst) nil)
    (t
     (cons (car lst) (take (- n 1) (cdr lst))))))
+
+;; This streams but the foldr version is cooler.
+
+(define (_map fn lst)
+  (cond
+   ((null? lst) nil)
+   (t
+    (cons (fn (car lst)) (_map fn (cdr lst))))))
 
 (define (_filter pred lst)
   (cond
@@ -138,61 +132,8 @@
 (define (filter pred lst)
   (flatten (map (lambda (e) (if (pred e) (list e) ())) lst)))
 
-;; This does not stream.
-
-(define (foldl fn accum lst)
-  (cond
-   ((null? lst) accum)
-   (t
-    (foldl fn (fn accum (car lst)) (cdr lst)))))
-
-;; This only works right with lazy evaluation.
-
-(define (if bool then else)
-  (cond (bool then) (t else)))
-
 (define (length lst)
   (foldr (lambda (_ tail) (+ 1 tail)) 0 lst))
-
-(define (numbers first)
-  (letrec
-   ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
-   maker))
-
-;; Here are some simpler definitions for infinte number lists to make
-;; it easier to find code problems.
-
-(and
-  lazy?
-  (define numbers1
-    (cons 1 (map (lambda (n) (+ n 1)) numbers1)))
-  'not-printed)
-
-(and
-  lazy?
-  (define numbers1a
-    (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
-  'not-printed)
-
-;; And even simpler:
-
-(and
-  lazy?
-  (define ones
-    (cons 1 ones))
-  'not-printed)
-
-(define (factorial n)
-  (apply * (take n (numbers 1))))
-
-(define (factorial2 n)
-  (apply * (take n (cdr (numbers 0)))))
-
-(define (triangle n)
-  (apply + (take n (numbers 1))))
-
-(define (reverse lst)
-  (foldl (lambda (accum e) (cons e accum)) nil lst))
 
 (define (flatten lst)
   (cond
@@ -224,50 +165,18 @@
    (t
     (cons (list (car a) (car b)) (zip (cdr a) (cdr b))))))
 
-;; Fake things out so the defines are evaluated but not printed, since
-;; they create infinite lists.
+;; This does not stream.
 
-(and
-  lazy?
-  (define evens
-     (cons 0 (map (lambda (a) (+ a 2)) evens)))
-  'not-printed)
+(define (foldl fn accum lst)
+  (cond
+   ((null? lst) accum)
+   (t
+    (foldl fn (fn accum (car lst)) (cdr lst)))))
 
-(and
-  lazy?
-  (define evens2
-    (map (lambda (a) (+ a 2)) (cons 0 evens2)))
-  'not-printed)
+(define (reverse lst)
+  (foldl (lambda (accum e) (cons e accum)) nil lst))
 
-;; factorial using the Y combinator:
+;; This only works right with lazy evaluation.
 
-(define yfact
-  ((lambda (builder)
-     (lambda (n) ((builder builder) n)))
-   (lambda (recurse)
-     (lambda (n)
-       (cond
-         ((eq n 0) 1)
-         (t (* n ((recurse recurse) (- n 1)))))))))
-
-;; triangle using the Y combinator.  This blows the stack even for
-;; (ytriangle 100):
-
-(define ytriangle
-  ((lambda (builder)
-     (lambda (n) ((builder builder) n)))
-   (lambda (recurse)
-     (lambda (n)
-       (cond
-         ((eq n 1) 1)
-         (t (+ n ((recurse recurse) (- n 1)))))))))
-
-;; Y combinator version of ones.  Note that yones is a lambda so it
-;; needs (yones) to evaluate it.
-
-(define yones
-  ((lambda (builder)
-     (lambda () ((builder builder))))
-   (lambda (recurse)
-     (lambda ()
-       (cons 1 ((recurse recurse)))))))
+(define (if bool then else)
+  (cond (bool then) (t else)))
