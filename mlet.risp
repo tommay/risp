@@ -1,0 +1,14 @@
+;; Implement let as a macro called mlet.
+
+(define-macro (mlet pairs form)
+  `((lambda (,@(map (lambda (pair) (car pair)) pairs)) ,form)
+    ,@(map (lambda (pair) (car (cdr pair))) pairs)))
+
+;; XXX This doesn't work yet.
+
+(define-macro (mlet* pairs form)
+  (cond
+   ((null? pairs)
+    `,form)
+   (!t
+    `(mlet ,(list (car pairs)) ,(mlet* ,(list (cdr pairs)) ,form)))))

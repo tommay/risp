@@ -1,0 +1,139 @@
+;; macro (dotimes n form) written in various ways.
+
+(define-macro (true form)
+  `(or ,form t))
+
+(define-macro (false form)
+  `(and ,form nil))
+
+;; `(-do-times ,n ',form)) doesn't work because the quote hides ,form
+;; from quasiquote.  So wrap form in a lambda instead of quoting it.
+;; This is actually cooler than quoting it.
+
+(define-macro (do-times n form)
+  `(-do-times ,n (lambda () ,form)))
+
+(define (-do-times n func)
+  (cond
+   ((eq n 0) nil)
+   ((true (func))
+    (-do-times (- n 1) func))))
+
+(define-macro (do-times n form)
+  `(letrec ((-gensym-
+             (lambda (n)
+               (cond
+                ((eq n 0) nil)
+                ((true ,form)
+                 (-gensym- (- n 1)))))))
+           (-gensym- ,n)))
+
+;; xxx gensym doesn't help here because
+;;   (define helper 10)
+;;   (do-times 3 @helper)
+;; shows the value of the letrec's helper.
+
+(define-macro (do-times n form)
+  (let ((helper (gensym)))
+    `(letrec ((helper
+               (lambda (n)
+                (cond
+                  ((eq n 0) nil)
+                  ((true ,form)
+                   (helper (- n 1)))))))
+             (helper ,n))))
+
+
+;; But we don't need the helper function. either as a global or as a
+;; letrec.  Use the y-combinator to define ytimes as a function that
+;; takes arguments n and func and calls func n times.
+
+(define ytimes1
+  ((lambda (builder)
+     (lambda (a1 a2) ((builder builder) a1 a2)))
+   (lambda (recurse)
+     (lambda (n func)
+       (cond
+         ((eq n 0) nil)
+         ((true (func))
+          ((recurse recurse) (- n 1) func)))))))
+
+;; Do the same with Y2 (for two arguments) defined as its own
+;; function.  Would be cool to have strings and make a macro Y(n).
+;; But there are cooler things yet.
+
+(define Y2
+  (lambda (builder)
+    (lambda (a1 a2) ((builder builder) a1 a2))))
+
+(define ytimes2
+  (Y2
+   (lambda (recurse)
+     (lambda (n func)
+       (cond
+         ((eq n 0) nil)
+         ((true (func))
+          ((recurse recurse) (- n 1) func)))))))
+
+;; Use the y-combinator to create a functio of one argument which
+;; calls func via the closure n times, then applies that function to
+;; n.
+
+(define Y1
+  (lambda (builder)
+    (lambda (a1) ((builder builder) a1))))
+
+(define (ytimes3 n func)
+  ((Y1
+    (lambda (recurse)
+      (lambda (n)
+        (cond
+          ((eq n 0) nil)
+          ((true (func))
+           ((recurse recurse) (- n 1)))))))
+    n))
+
+;; Macro to build the y-combinator machinery with an arbitrary number
+;; of arguments and names.  The only funny business is hacing to use
+;; the magic (recurse recurse) in the form.  It would be cool to make
+;; this macro look for (recurse ...) and change it to ((recurse
+;; recurse ...).  Somehow it doesn't work to pass in (recurse recurse)
+;; to begin with.
+
+(define-macro (y args form)
+  `((lambda (builder)
+      (lambda ,args ((builder builder) ,@args)))
+    (lambda (recurse)
+      (lambda ,args ,form))))
+
+;; This works but doesn't buy us anything because zfact is already
+;; global so it can call itself.  It would be more useful to create
+;; anonymous recursive functions like in ztimes* below.
+
+(define zfact
+  (y (n)
+   (cond
+    ((eq n 0) 1)
+    (t (* n ((recurse recurse) (- n 1)))))))
+
+;; Use y to create an anonymous function and call it with n inlining
+;; form with the macro.  This works.
+
+(define-macro (ztimes n form)
+  `((y (n)
+      (cond
+       ((eq n 0) nil)
+       ((true ,form)
+        ((recurse recurse) (- n 1)))))
+    ,n))
+
+;; Use y to create an anonymous function with two arguments and call
+;; it with n and the form wrapped in a lambda.  This works.
+
+(define-macro (ztimes2 n form)
+  `((y (n func)
+      (cond
+       ((eq n 0) nil)
+       ((true (func))
+        ((recurse recurse) (- n 1) func))))
+    ,n (lambda () ,form)))

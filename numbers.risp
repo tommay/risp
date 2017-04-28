@@ -1,0 +1,84 @@
+(define (numbers first)
+  (letrec
+   ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
+   maker))
+
+;; Here are some simpler definitions for infinte number lists to make
+;; it easier to find code problems.
+
+(and
+  lazy?
+  (define numbers1
+    (cons 1 (map (lambda (n) (+ n 1)) numbers1)))
+  'not-printed)
+
+(and
+  lazy?
+  (define numbers1a
+    (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
+  'not-printed)
+
+;; And even simpler:
+
+(and
+  lazy?
+  (define ones
+    (cons 1 ones))
+  'not-printed)
+
+(define (factorial n)
+  (apply * (take n (numbers 1))))
+
+(define (factorial2 n)
+  (apply * (take n (cdr (numbers 0)))))
+
+(define (triangle n)
+  (apply + (take n (numbers 1))))
+
+;; Fake things out so the defines are evaluated but not printed, since
+;; they create infinite lists.
+
+(and
+  lazy?
+  (define evens
+     (cons 0 (map (lambda (a) (+ a 2)) evens)))
+  'not-printed)
+
+(and
+  lazy?
+  (define evens2
+    (map (lambda (a) (+ a 2)) (cons 0 evens2)))
+  'not-printed)
+
+;; factorial using the Y combinator:
+
+(define yfact
+  ((lambda (builder)
+     (lambda (n) ((builder builder) n)))
+   (lambda (recurse)
+     (lambda (n)
+       (cond
+         ((eq n 0) 1)
+         (t (* n ((recurse recurse) (- n 1)))))))))
+
+;; triangle using the Y combinator.  This blows the stack even for
+;; (ytriangle 100):
+
+(define ytriangle
+  ((lambda (builder)
+     (lambda (n) ((builder builder) n)))
+   (lambda (recurse)
+     (lambda (n)
+       (cond
+         ((eq n 1) 1)
+         (t (+ n ((recurse recurse) (- n 1)))))))))
+
+;; Y combinator version of ones.  Note that yones is a lambda so it
+;; needs (yones) to evaluate it.
+
+(define yones
+  ((lambda (builder)
+     (lambda () ((builder builder))))
+   (lambda (recurse)
+     (lambda ()
+       (cons 1 ((recurse recurse)))))))

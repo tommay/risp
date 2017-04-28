@@ -1,0 +1,4 @@
+;; A quick defun macro.
+
+(define-macro (defun name args body)
+  `(define (,name ,@args) ,body))

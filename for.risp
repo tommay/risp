@@ -1,0 +1,19 @@
+(define (cadr lst)
+  (car (cdr lst)))
+
+(define (caddr lst)
+  (car (cdr (cdr lst))))
+
+;; Simple list comprehension: (for (x :in lst) form)
+
+(define-macro (for listspec form)
+  (cond ((and (eq (length listspec) 3)
+              (symbol? (car listspec))
+              (eq (cadr listspec) ':in))
+         `(map (lambda (,(car listspec)) ,form)
+               ,(caddr listspec)))
+        (t wtf))) 
+
+;;        (t (error "Ill-formed: %s" `(for ,listspec ,exp)))))
+
+(for (x :in '(1 2 3)) (+ x 1))
