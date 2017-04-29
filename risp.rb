@@ -314,7 +314,7 @@ EOS
         new_bindings = @symbol_array.zip(arg_array).reduce(bindings) do |memo, (symbol, val)|
           memo.bind(symbol, val)
         end
-        Risp.strict_eval(@form, new_bindings)
+        Risp.eval_strict(@form, new_bindings)
       end
     end
 
@@ -342,7 +342,7 @@ EOS
       case @state
       when :unevaluated
         @state = :in_progress
-        Risp.strict_eval(@form, @bindings).tap do |result|
+        Risp.eval_strict(@form, @bindings).tap do |result|
           @memo = result
           @state = :evaluated
         end
@@ -545,7 +545,7 @@ EOS
     case
     when form == Qnil
       Qnil
-    when dethunk(strict_eval(car(car(form)), bindings)) != Qnil
+    when dethunk(eval_strict(car(car(form)), bindings)) != Qnil
       eval(car(cdr(car(form))), bindings)
     else
       cond(cdr(form), bindings)
@@ -614,7 +614,7 @@ EOS
         if lazy?
           Thunk.new(expr, bindings)
         else
-          strict_eval(expr, bindings)
+          eval_strict(expr, bindings)
         end
       end
     rescue Risp::Exception
@@ -622,13 +622,13 @@ EOS
    end
   end
 
-  def self.strict_eval(expr, bindings)
+  def self.eval_strict(expr, bindings)
     expr = dethunk(expr)
     case expr
     when Atom
       expr.eval(bindings)
     when Cell
-      fn = strict_eval(car(expr), bindings)
+      fn = eval_strict(car(expr), bindings)
       args = cdr(expr)
       apply(fn, args, bindings)
     else
@@ -673,7 +673,7 @@ EOS
     when args == Qnil
       Qt
     when args.is_a?(Cell)
-      val = dethunk(strict_eval(args.car, bindings))
+      val = dethunk(eval_strict(args.car, bindings))
       case
       when val == Qnil
         Qnil
@@ -694,7 +694,7 @@ EOS
     when args == Qnil
       Qnil
     when args.is_a?(Cell)
-      val = dethunk(strict_eval(args.car, bindings))
+      val = dethunk(eval_strict(args.car, bindings))
       if val != Qnil
         val
       else
