@@ -336,14 +336,9 @@ EOS
       @state = :unevaluated
       @form = form
       @bindings = bindings
-
-      if form.inspect == "(cons 1 (map (lambda (n) (+ n 1)) numbers1))"
-        @debug = 1
-      end
     end
 
     def eval
-#      binding.pry if @debug
       case @state
       when :unevaluated
         @state = :in_progress
