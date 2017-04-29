@@ -603,7 +603,7 @@ EOS
     to_boolean(arg.is_a?(Macro))
   end
 
-  send(lazy? ? :fsubr : :subr, "eval", 1) do |expr, bindings = @default_bindings|
+  @subr_eval = subr("eval", 1) do |expr, bindings = @default_bindings|
     begin
       case expr
       when Atom
@@ -626,6 +626,10 @@ EOS
    end
   end
 
+  @subr_eval_strict = Subr.new("#eval_strict", 1) do |expr, bindings|
+    eval_strict(expr, bindings)
+  end
+
   def self.eval_strict(expr, bindings)
     expr = dethunk(expr)
     case expr
@@ -634,6 +638,9 @@ EOS
     when Cell
       fn = eval_strict(car(expr), bindings)
       args = cdr(expr)
+      if fn == @subr_eval
+        fn = @subr_eval_strict
+      end
       apply(fn, args, bindings)
     else
       binding.pry if Risp.debug?
