@@ -613,6 +613,7 @@ EOS
         # Qt and Qnil.
         expr.eval(bindings)
       when Thunk
+        # If it's already a thunk we have nothing to do.
         expr
       else
         if lazy?
@@ -638,6 +639,10 @@ EOS
     when Cell
       fn = eval_strict(car(expr), bindings)
       args = cdr(expr)
+      # This method is eval_strict: the actual result is needed by the caller,
+      # so use eval_strict instead eval.  This fixes the problem where
+      # (eval '(+ 1 3)) returns (+ 1 3) instead of 4.
+      #
       if fn == @subr_eval
         fn = @subr_eval_strict
       end
