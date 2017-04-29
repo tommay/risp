@@ -498,13 +498,17 @@ EOS
   global(Symbol.intern("lazy?"), lazy? ? Qt : Qnil)
 
   def self.fsubr(name, nargs = nil, f_name = name, &block)
-    global(Symbol.intern(name), Fsubr.new(name, nargs, &block))
-    define_singleton_method(f_name.to_sym, &block)
+    Fsubr.new(name, nargs, &block).tap do |subr|
+      global(Symbol.intern(name), subr)
+      define_singleton_method(f_name.to_sym, &block)
+    end
   end
 
   def self.subr(name, nargs = nil, f_name = name, &block)
-    global(Symbol.intern(name), Subr.new(name, nargs, &block))
-    define_singleton_method(f_name.to_sym, &block)
+    Subr.new(name, nargs, &block).tap do |subr|
+      global(Symbol.intern(name), subr)
+      define_singleton_method(f_name.to_sym, &block)
+    end
   end
 
   fsubr("quote", 1) do |arg, bindings = nil|
