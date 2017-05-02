@@ -53,7 +53,7 @@ EOS
     no_comments.split(/\n{2,}/).each do |section|
       if section !~ /^\s*$/
         form = ::Lepr.parse(section)
-        expanded = Risp.lazy? ? form : do_macros(form)
+        expanded = do_macros(form)
         result = eval(expanded)
         if do_print
           result.write(STDOUT)
@@ -692,7 +692,7 @@ EOS
     eval_strict(expr, bindings)
   end
 
-  def self.eval_strict(expr, bindings)
+  def self.eval_strict(expr, bindings = @default_bindings)
     expr = dethunk(expr)
     case expr
     when Atom
@@ -1082,8 +1082,8 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         form = parse(line)
-        expanded = (true || Risp.lazy?) ? form : Risp::do_macros(form)
-        Risp.eval(expanded).tap do |val|
+        expanded = Risp::do_macros(form)
+        Risp.eval_strict(expanded).tap do |val|
           val.write(STDOUT)
           puts
         end
