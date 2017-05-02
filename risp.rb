@@ -602,8 +602,6 @@ EOS
   end
 
   fsubr("lambda", 2) do |symbols, form, bindings, name = nil|
-    symbol_array = to_array(symbols)
-    check_symbols(symbol_array)
     Closure.new(symbols, form, bindings, name)
   end
 
