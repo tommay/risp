@@ -264,23 +264,66 @@ EOS
   end
 
   class Closure
-    def initialize(symbol_array, form, bindings, name)
-      @symbol_array = symbol_array
+    def initialize(symbols, form, bindings, name)
+      check_symbols(symbols)
+      @symbols = symbols
       @form = form
       @bindings = bindings
       @name = name || form.inspect
     end
 
+    def check_symbols(symbols)
+      case symbols
+      when Qnil
+        # ok
+      when Cell
+        a = Risp.car(symbols)
+        d = Risp.cdr(symbols)
+        case a
+        when Qrest
+          if d.is_a?(Cell) &&
+             Risp.car(d).is_a?(Symbol) && Risp.car(d) != Qnil &&
+             Risp.cdr(d) == Qnil
+            # ok
+          else
+            raise Risp::Exception.new("Exactly one symbol required after &rest, got #{d.inspect}")
+          end
+        when Symbol
+          check_symbols(d)
+        else
+          raise Risp::Exception.new("Expected symbol, got #{a.inspect}")
+        end
+      else
+        raise Risp::Exception.new("Expected symbol list, got #{symbols.inspect}")
+      end
+    end
+
     def eval(args)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
-        arg_array = Risp::to_array(args, @symbol_array.length)
-        bindings = @symbol_array.zip(arg_array).reduce(@bindings) do |memo, (symbol, val)|
-          memo.bind(symbol, val)
-        end
+        bindings = bind_symbols_to_args(@bindings, @symbols, args)
         Risp.eval(@form, bindings)
       end
     rescue Risp::Exception
       raise Risp::Exception.new("in #{@name}#{args.inspect}")
+    end
+
+    def bind_symbols_to_args(bindings, symbols, args)
+      case
+      when symbols == Qnil && args == Qnil
+        bindings
+      when symbols == Qnil
+        binding.pry if ::Risp.debug?
+        raise ::Risp::Exception.new("Too many arguments or #{@name}")
+      when ::Risp.car(symbols) == Qrest
+        bindings.bind(::Risp.car(::Risp.cdr(symbols)), args)
+      when args == Qnil
+        binding.pry if ::Risp.debug?
+        raise ::Risp::Exception.new("Not enough arguments for #{@name}")
+      else
+        bind_symbols_to_args(
+          bindings.bind(::Risp.car(symbols), ::Risp.car(args)),
+          ::Risp.cdr(symbols), ::Risp.cdr(args))
+      end
     end
 
     def inspect
@@ -290,7 +333,7 @@ EOS
     end
 
     def write(io, dethunk = true)
-      io.write("[(" + @symbol_array.map(&:to_s).join(" ") + ") => ")
+      io.write("[#{@symbols.inspect} => ")
       @form.write(io, dethunk)
       io.write(" ")
       io.write(@bindings.inspect)
@@ -487,6 +530,8 @@ EOS
 
   Qt = Symbol.intern("t")
 
+  Qrest = Symbol.intern("&rest")
+
   Qquote = Symbol.intern("quote")
   Qquasiquote = Symbol.intern("quasiquote")
   Qunquote = Symbol.intern("unquote")
@@ -559,7 +604,7 @@ EOS
   fsubr("lambda", 2) do |symbols, form, bindings, name = nil|
     symbol_array = to_array(symbols)
     check_symbols(symbol_array)
-    Closure.new(symbol_array, form, bindings, name)
+    Closure.new(symbols, form, bindings, name)
   end
 
   subr("null?", 1) do |arg, bindings = nil|
