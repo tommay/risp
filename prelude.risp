@@ -61,9 +61,9 @@
    ((eq (car form) 'define-macro)
     form)
    ((and
-      (symbol? (car form))
-      (bound? (car form))
-      (macro? (eval (car form))))
+     (symbol? (car form))
+     (bound? (car form))
+     (macro? (eval (car form))))
     (do-macros (eval form)))
    (t
     (map do-macros form))))
@@ -99,8 +99,8 @@
     (cons (car -form-) (apply quasiquote (list (cdr -form-)))))
    ((eq (car (car -form-)) 'unquote-splicing)
     (append
-      (eval (car (cdr (car -form-))))
-      (apply quasiquote (list (cdr -form-)))))
+     (eval (car (cdr (car -form-))))
+     (apply quasiquote (list (cdr -form-)))))
    (t
     (cons
      (apply quasiquote (list (car -form-)))
@@ -148,7 +148,7 @@
            (cond
             ((list? e) (append e tail))
             (t (cons e tail))))
-    nil lst))
+	 nil lst))
 
 (define (nth n list)
   (cond

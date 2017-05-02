@@ -26,7 +26,7 @@
                 ((eq n 0) nil)
                 ((true ,form)
                  (-gensym- (- n 1)))))))
-           (-gensym- ,n)))
+     (-gensym- ,n)))
 
 ;; xxx gensym doesn't help here because
 ;;   (define helper 10)
@@ -37,11 +37,11 @@
   (let ((helper (gensym)))
     `(letrec ((helper
                (lambda (n)
-                (cond
+		 (cond
                   ((eq n 0) nil)
                   ((true ,form)
                    (helper (- n 1)))))))
-             (helper ,n))))
+       (helper ,n))))
 
 
 ;; But we don't need the helper function. either as a global or as a
@@ -54,9 +54,9 @@
    (lambda (recurse)
      (lambda (n func)
        (cond
-         ((eq n 0) nil)
-         ((true (func))
-          ((recurse recurse) (- n 1) func)))))))
+	((eq n 0) nil)
+	((true (func))
+	 ((recurse recurse) (- n 1) func)))))))
 
 ;; Do the same with Y2 (for two arguments) defined as its own
 ;; function.  Would be cool to have strings and make a macro Y(n).
@@ -71,9 +71,9 @@
    (lambda (recurse)
      (lambda (n func)
        (cond
-         ((eq n 0) nil)
-         ((true (func))
-          ((recurse recurse) (- n 1) func)))))))
+	((eq n 0) nil)
+	((true (func))
+	 ((recurse recurse) (- n 1) func)))))))
 
 ;; Use the y-combinator to create a functio of one argument which
 ;; calls func via the closure n times, then applies that function to
@@ -88,10 +88,10 @@
     (lambda (recurse)
       (lambda (n)
         (cond
-          ((eq n 0) nil)
-          ((true (func))
-           ((recurse recurse) (- n 1)))))))
-    n))
+	 ((eq n 0) nil)
+	 ((true (func))
+	  ((recurse recurse) (- n 1)))))))
+   n))
 
 ;; Macro to build the y-combinator machinery with an arbitrary number
 ;; of arguments and names.  The only funny business is hacing to use
@@ -112,19 +112,19 @@
 
 (define zfact
   (y (n)
-   (cond
-    ((eq n 0) 1)
-    (t (* n ((recurse recurse) (- n 1)))))))
+     (cond
+      ((eq n 0) 1)
+      (t (* n ((recurse recurse) (- n 1)))))))
 
 ;; Use y to create an anonymous function and call it with n inlining
 ;; form with the macro.  This works.
 
 (define-macro (ztimes n form)
   `((y (n)
-      (cond
-       ((eq n 0) nil)
-       ((true ,form)
-        ((recurse recurse) (- n 1)))))
+       (cond
+	((eq n 0) nil)
+	((true ,form)
+	 ((recurse recurse) (- n 1)))))
     ,n))
 
 ;; Use y to create an anonymous function with two arguments and call
@@ -132,8 +132,8 @@
 
 (define-macro (ztimes2 n form)
   `((y (n func)
-      (cond
-       ((eq n 0) nil)
-       ((true (func))
-        ((recurse recurse) (- n 1) func))))
+       (cond
+	((eq n 0) nil)
+	((true (func))
+	 ((recurse recurse) (- n 1) func))))
     ,n (lambda () ,form)))

@@ -1,4 +1,4 @@
 (define-macro (if bool then else)
   `(cond
-     (,bool ,then)
-     (t ,else)))
+    (,bool ,then)
+    (t ,else)))
