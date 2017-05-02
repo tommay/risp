@@ -263,16 +263,8 @@ EOS
     end
   end
 
-  class Closure
-    def initialize(symbols, form, bindings, name)
-      check_symbols(symbols)
-      @symbols = symbols
-      @form = form
-      @bindings = bindings
-      @name = name || form.inspect
-    end
-
-    def check_symbols(symbols)
+  module HasArgList
+    def check_arg_list(symbols)
       case symbols
       when Qnil
         # ok
@@ -289,22 +281,13 @@ EOS
             raise Risp::Exception.new("Exactly one symbol required after &rest, got #{d.inspect}")
           end
         when Symbol
-          check_symbols(d)
+          check_arg_list(d)
         else
           raise Risp::Exception.new("Expected symbol, got #{a.inspect}")
         end
       else
         raise Risp::Exception.new("Expected symbol list, got #{symbols.inspect}")
       end
-    end
-
-    def eval(args)
-      Risp.trace(->{"#{@name}#{args.inspect}"}) do
-        bindings = bind_symbols_to_args(@bindings, @symbols, args)
-        Risp.eval(@form, bindings)
-      end
-    rescue Risp::Exception
-      raise Risp::Exception.new("in #{@name}#{args.inspect}")
     end
 
     def bind_symbols_to_args(bindings, symbols, args)
@@ -326,6 +309,39 @@ EOS
       end
     end
 
+    def dethunk_deep(arg)
+      arg = Risp.dethunk(arg)
+      case arg
+      when Cell
+        Cell.new(dethunk_deep(arg.car), dethunk_deep(arg.cdr))
+      else
+        arg
+      end
+    end
+  end
+
+  class Closure
+    include HasArgList
+
+    def initialize(symbols, form, bindings, name)
+      symbols = dethunk_deep(symbols)
+      form = dethunk_deep(form)
+      check_arg_list(symbols)
+      @symbols = symbols
+      @form = form
+      @bindings = bindings
+      @name = name || form.inspect
+    end
+
+    def eval(args)
+      Risp.trace(->{"#{@name}#{args.inspect}"}) do
+        bindings = bind_symbols_to_args(@bindings, @symbols, args)
+        Risp.eval(@form, bindings)
+      end
+    rescue Risp::Exception
+      raise Risp::Exception.new("in #{@name}#{args.inspect}")
+    end
+
     def inspect
       io = StringIO.new
       write(io, false)
@@ -342,21 +358,23 @@ EOS
   end
 
   class Macro
-    def initialize(symbol_array, form, name)
-      @symbol_array = symbol_array
+    include HasArgList
+
+    def initialize(symbols, form, name)
+      symbols = dethunk_deep(symbols)
+      form = dethunk_deep(form)
+      check_arg_list(symbols)
+      @symbols = symbols
       @form = form
       @name = name || form.inspect
     end
 
     def eval(args, bindings)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
-        arg_array = Risp::to_array(args, @symbol_array.length)
         # We are using the caller's bindings, this is so quasiquote, which
         # is a macro, has access to the caller's bindings.  Probably
         # not the right way to do it, but oh well.
-        new_bindings = @symbol_array.zip(arg_array).reduce(bindings) do |memo, (symbol, val)|
-          memo.bind(symbol, val)
-        end
+        new_bindings = bind_symbols_to_args(bindings, @symbols, args)
         Risp.eval_strict(@form, new_bindings)
       end
     end
@@ -368,7 +386,7 @@ EOS
     end
 
     def write(io, dethunk = true)
-      io.write("[macro (" + @symbol_array.map(&:to_s).join(" ") + ") => ")
+      io.write("[macro #{@symbols.inspect} => ")
       @form.write(io, dethunk)
       io.write("]")
     end
@@ -876,13 +894,14 @@ EOS
   end
 
   fsubr("define", 2) do |args, form, bindings|
+    args = dethunk(args)
     case args
     when Symbol
       eval(form, bindings).tap do |val|
         global(args, val)
       end
     when Cell
-      name = args.car
+      name = dethunk(args.car)
       symbols = args.cdr
       lambda(symbols, form, bindings, name.to_s).tap do |closure|
         global(name, closure)
@@ -894,12 +913,12 @@ EOS
   end
 
   fsubr("define-macro", 2) do |args, form, bindings = nil|
+    args = dethunk(args)
     case args
     when Cell
-      name = args.car
-      symbol_array = to_array(args.cdr)
-      check_symbols(symbol_array)
-      Macro.new(symbol_array, form, name.to_s).tap do |macro|
+      name = dethunk(args.car)
+      symbols = args.cdr
+      Macro.new(symbols, form, name.to_s).tap do |macro|
         global(name, macro)
       end
     else
