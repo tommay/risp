@@ -308,24 +308,14 @@ EOS
           ::Risp.cdr(symbols), ::Risp.cdr(args))
       end
     end
-
-    def dethunk_deep(arg)
-      arg = Risp.dethunk(arg)
-      case arg
-      when Cell
-        Cell.new(dethunk_deep(arg.car), dethunk_deep(arg.cdr))
-      else
-        arg
-      end
-    end
   end
 
   class Closure
     include HasArgList
 
     def initialize(symbols, form, bindings, name)
-      symbols = dethunk_deep(symbols)
-      form = dethunk_deep(form)
+      symbols = Risp.dethunk_deep(symbols)
+      form = Risp.dethunk_deep(form)
       check_arg_list(symbols)
       @symbols = symbols
       @form = form
@@ -361,8 +351,8 @@ EOS
     include HasArgList
 
     def initialize(symbols, form, name)
-      symbols = dethunk_deep(symbols)
-      form = dethunk_deep(form)
+      symbols = Risp.dethunk_deep(symbols)
+      form = Risp.dethunk_deep(form)
       check_arg_list(symbols)
       @symbols = symbols
       @form = form
@@ -726,6 +716,16 @@ EOS
     end
   end
 
+  def self.dethunk_deep(arg)
+    arg = Risp.dethunk(arg)
+    case arg
+    when Cell
+      Cell.new(dethunk_deep(arg.car), dethunk_deep(arg.cdr))
+    else
+      arg
+    end
+  end
+
   subr("apply", 2) do |fn, args, bindings|
     fn = dethunk(fn)
     args = dethunk(args)
@@ -961,8 +961,9 @@ EOS
 
   def self.do_macros(form)
     if bound?(Qdo_macros, @default_bindings) == Qt
-      apply(eval(Qdo_macros, @default_bindings),
-            to_list(cons(Qquote, to_list(form))), @default_bindings)
+      dethunk_deep(
+        apply(eval(Qdo_macros, @default_bindings),
+              to_list(cons(Qquote, to_list(form))), @default_bindings))
     else
       form
     end
