@@ -107,7 +107,7 @@ but if the arguments are reversed then zip diverges since filtering an
 infinite list gives an infinite list and zip doesn't know it's ok to end.
 However, it will blow the stack.
 
-Haskell also diverges in the same case:
+Haskell also diverges in the same case, but doesn't blow the stack:
 
 ~~~~
 evens = map (+2) (0 : evens)
