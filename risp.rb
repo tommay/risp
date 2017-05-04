@@ -673,9 +673,6 @@ EOS
         # an expression. Numbers certainly never change.  Neither should
         # Qt and Qnil.
         expr.eval(bindings)
-      when Thunk
-        # If it's already a thunk we have nothing to do.
-        expr
       else
         if lazy?
           Thunk.new(expr, bindings)
