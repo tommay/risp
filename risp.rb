@@ -682,7 +682,7 @@ EOS
       end
     rescue Risp::Exception
       raise Risp::Exception.new("in #{expr.inspect}")
-   end
+    end
   end
 
   @subr_eval_strict = Subr.new("#eval_strict", 1) do |expr, bindings|
