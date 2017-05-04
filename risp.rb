@@ -406,6 +406,9 @@ EOS
         Risp.eval_strict(@form, @bindings).tap do |result|
           @memo = result
           @state = :evaluated
+          if Risp.xxx
+            puts result.inspect
+          end
         end
       when :in_progress
         binding.pry if Risp.debug?
@@ -945,6 +948,15 @@ EOS
   subr("trace-on", 0) do |bindings = nil|
     @tracing = true
     Qt
+  end
+
+  subr("xxx", 0) do |bindings = nil|
+    @xxx = true
+    Qt
+  end
+
+  def self.xxx
+    @xxx
   end
 
   def self.do_macros(form)
