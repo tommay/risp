@@ -17,6 +17,7 @@ Run the risp repl to interpret my tiny lisp dialect with lazy evaluation.
 EOS
     opt :lazy, "Use lazy evaluation (default)"
     opt :strict, "Use strict evaluation"
+    opt :macros, "Disable macros"
     opt :repl, "Run a repl after loading the files"
     opt :trace, "Print evaluation trace"
     opt :debug, "Debug with binding.pry on exception"
@@ -25,6 +26,10 @@ EOS
 
   def self.lazy?
     !@options.strict
+  end
+
+  def self.macros?
+    !@options.macros
   end
 
   @tracing = @options.trace
@@ -53,7 +58,7 @@ EOS
     no_comments.split(/\n{2,}/).each do |section|
       if section !~ /^\s*$/
         form = ::Lepr.parse(section)
-        expanded = do_macros(form)
+        expanded = macros? ? do_macros(form) : form
         result = eval(expanded)
         if do_print
           result.write(STDOUT)
@@ -1092,7 +1097,7 @@ class Lepr
     while line = Readline.readline('> ', true)
       begin
         form = parse(line)
-        expanded = Risp::do_macros(form)
+        expanded = Risp.macros? ? Risp::do_macros(form) : form
         Risp.eval_strict(expanded).tap do |val|
           val.write(STDOUT)
           puts
