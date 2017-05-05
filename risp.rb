@@ -586,9 +586,7 @@ EOS
   end
   
   subr("eq", 2) do |x, y, bindings = nil|
-    to_boolean((x = dethunk(x)).is_a?(Atom) &&
-               (y = dethunk(y)).is_a?(Atom) &&
-               x == y)
+    to_boolean(dethunk(x) == dethunk(y))
   end
 
   subr("car", 1) do |arg, bindings = nil|
