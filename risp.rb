@@ -416,7 +416,16 @@ EOS
     end
 
     def inspect
-      "[thunk: <#{@memo && @memo.inspect}> #{@form.inspect}, #{@bindings.inspect}]"
+      if !@inspecting
+        @inspecting = true
+        begin
+          "[thunk: <#{@memo && @memo.inspect}> #{@form.inspect}, #{@bindings.inspect}]"
+        ensure
+          @inspecting = false
+        end
+      else
+        "[thunk: <...> #{@form.inspect}, #{@bindings.inspect}]"
+      end
     end
 
     def write(io, dethunk = true)
