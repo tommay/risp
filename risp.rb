@@ -401,9 +401,10 @@ EOS
         Risp.eval_strict(@form, @bindings).tap do |result|
           @memo = result
           @state = :evaluated
-          if Risp.xxx
-            puts result.inspect
-          end
+          # Clear @form and @bindings so any thunks in the bindings
+          # can be garbage collected.
+          @form = nil
+          @bindings = nil
         end
       when :in_progress
         binding.pry if Risp.debug?
