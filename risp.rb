@@ -800,9 +800,9 @@ EOS
     end
   end
 
-  subr("+") do |list, bindings = nil|
+  fsubr("+") do |list, bindings = nil|
     fold(Number.new(0), list) do |memo, arg|
-      memo + dethunk(arg)
+      memo + dethunk(eval_strict(arg, bindings))
     end
   end
 
