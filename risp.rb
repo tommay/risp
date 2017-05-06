@@ -718,12 +718,16 @@ EOS
   end
 
   def self.dethunk(arg)
-    trampoline { _dethunk(arg) }
+    trampoline do
+      _dethunk(arg)
+    end
   end
 
   def self._dethunk(arg)
     if arg.is_a?(Thunk)
-      ->{ _dethunk(arg.eval) }
+      -> do
+        _dethunk(arg.eval)
+      end
     else
       arg
     end
@@ -1018,11 +1022,9 @@ EOS
   end
 
   def self.fold(accum, list, &block)
-    if caller.size > 1000
-      puts caller.join("\n")
-      exit
+    trampoline do
+      _fold(accum, list, block)
     end
-    trampoline { _fold(accum, list, block) }
   end
 
   def self._fold(accum, list, block)
@@ -1032,7 +1034,9 @@ EOS
       accum
     when Cell
       new_accum = block.call(accum, list.car)
-      ->{ _fold(new_accum, list.cdr, block) }
+      -> do
+        _fold(new_accum, list.cdr, block)
+      end
     else
       binding.pry if Risp.debug?
       raise Risp::Exception.new("Can't fold #{list.inspect}")
