@@ -800,24 +800,24 @@ EOS
     end
   end
 
-  fsubr("+") do |list, bindings = nil|
+  fsubr("+") do |list, bindings|
     fold(Number.new(0), list) do |memo, arg|
       memo + dethunk(eval_strict(arg, bindings))
     end
   end
 
-  subr("-") do |list, bindings = nil|
+  fsubr("-") do |list, bindings|
     list = dethunk(list)
     case list
     when Cell
-      val = dethunk(list.car)
+      val = dethunk(eval_strict(list.car, bindings))
       case val
       when Number
         if dethunk(list.cdr) == Qnil
           Number.new(-val.val)
         else
-          fold_block(val, list.cdr) do |memo, arg|
-            memo - dethunk(arg)
+          fold(val, list.cdr) do |memo, arg|
+            memo - dethunk(eval_strict(arg, bindings))
           end
         end
       else
@@ -830,9 +830,9 @@ EOS
     end
   end
 
-  subr("*") do |list, bindings = nil|
-    fold_block(Number.new(1), list) do |memo, arg|
-      memo * dethunk(arg)
+  fsubr("*") do |list, bindings|
+    fold(Number.new(1), list) do |memo, arg|
+      memo * dethunk(eval_strict(arg, bindings))
     end
   end
 
