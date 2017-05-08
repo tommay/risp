@@ -761,6 +761,10 @@ EOS
     end
   end
 
+  subr("not", 1) do |arg, bindings = nil|
+    null?(arg)
+  end
+
   fsubr("and", nil, :f_and) do |args, bindings|
     trampoline do
       _and(args, bindings)
