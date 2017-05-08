@@ -812,7 +812,7 @@ EOS
   end
 
   fsubr("+") do |list, bindings|
-    fold(Number.new(0), list) do |memo, arg|
+    fold_left(Number.new(0), list) do |memo, arg|
       memo + dethunk(eval_strict(arg, bindings))
     end
   end
@@ -827,7 +827,7 @@ EOS
         if dethunk(list.cdr) == Qnil
           Number.new(-val.val)
         else
-          fold(val, list.cdr) do |memo, arg|
+          fold_left(val, list.cdr) do |memo, arg|
             memo - dethunk(eval_strict(arg, bindings))
           end
         end
@@ -842,7 +842,7 @@ EOS
   end
 
   fsubr("*") do |list, bindings|
-    fold(Number.new(1), list) do |memo, arg|
+    fold_left(Number.new(1), list) do |memo, arg|
       memo * dethunk(eval_strict(arg, bindings))
     end
   end
@@ -1032,22 +1032,15 @@ EOS
     end
   end
 
-  def self.fold(accum, list, &block)
-    trampoline do
-      _fold(accum, list, block)
-    end
-  end
+  # fold_left can fold arbitrarily long lazy lists.
 
-  def self._fold(accum, list, block)
-    list = dethunk(list)
-    case list
-    when Qnil
+  def self.fold_left(accum, list, &block)
+    while (list = dethunk(list)).is_a?(Cell)
+      accum = block.call(accum, list.car)
+      list = list.cdr
+    end
+    if list == Qnil
       accum
-    when Cell
-      new_accum = block.call(accum, list.car)
-      -> do
-        _fold(new_accum, list.cdr, block)
-      end
     else
       binding.pry if Risp.debug?
       raise Risp::Exception.new("Can't fold #{list.inspect}")
