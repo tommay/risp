@@ -398,7 +398,7 @@ EOS
       case @state
       when :unevaluated
         @state = :in_progress
-        Risp.eval_strict(@form, @bindings).tap do |result|
+        Risp.dethunk(Risp.eval_strict(@form, @bindings)).tap do |result|
           @memo = result
           @state = :evaluated
           # Clear @form and @bindings so any thunks in the bindings
@@ -718,10 +718,11 @@ EOS
   end
 
   def self.dethunk(arg)
-    while arg.is_a?(Thunk)
-      arg = arg.eval
+    if arg.is_a?(Thunk)
+      arg.eval
+    else
+      arg
     end
-    arg
   end
 
   def self.dethunk_deep(arg)
