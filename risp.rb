@@ -718,8 +718,13 @@ EOS
   end
 
   def self.dethunk(arg)
-    trampoline do
-      _dethunk(arg)
+    # It's a lot faster to avoid the trampoline unless we have a Thunk.
+    if arg.is_a?(Thunk)
+      trampoline do
+        _dethunk(arg)
+      end
+    else
+      arg
     end
   end
 
