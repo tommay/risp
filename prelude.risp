@@ -188,3 +188,9 @@
 
 (define (if bool then else)
   (cond (bool then) (t else)))
+
+(define (any? pred list)
+  (apply or (map pred list)))
+
+(define (all? pred list)
+  (apply and (map pred list)))
