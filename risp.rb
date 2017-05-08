@@ -762,6 +762,12 @@ EOS
   end
 
   fsubr("and", nil, :f_and) do |args, bindings|
+    trampoline do
+      _and(args, bindings)
+    end
+  end
+
+  def self._and(args, bindings)
     args = dethunk(args)
     case
     when args == Qnil
@@ -774,7 +780,9 @@ EOS
       when dethunk(args.cdr) == Qnil
         val
       else
-        f_and(args.cdr, bindings)
+        -> do
+          _and(args.cdr, bindings)
+        end
       end
     else
       binding.pry if Risp.debug?
@@ -783,6 +791,12 @@ EOS
   end
 
   fsubr("or", nil, :f_or) do |args, bindings|
+    trampoline do
+      _or(args, bindings)
+    end
+  end
+
+  def self._or(args, bindings)
     args = dethunk(args)
     case
     when args == Qnil
@@ -792,7 +806,9 @@ EOS
       if val != Qnil
         val
       else
-        f_or(args.cdr, bindings)
+        -> do
+          _or(args.cdr, bindings)
+        end
       end
     else
       binding.pry if Risp.debug?
