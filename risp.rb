@@ -991,7 +991,7 @@ EOS
     if bound?(Qdo_macros, @default_bindings) == Qt
       dethunk_deep(
         apply(eval(Qdo_macros, @default_bindings),
-              to_list(cons(Qquote, to_list(form))), @default_bindings))
+              to_list(to_list(Qquote, form)), @default_bindings))
     else
       form
     end
