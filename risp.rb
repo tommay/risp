@@ -96,6 +96,10 @@ EOS
       end
     end
 
+    def eval(bindings)
+      self
+    end
+
     def inspect
       to_s
     end
@@ -162,10 +166,6 @@ EOS
 
     def val
       @val
-    end
-
-    def eval(bindings)
-      self
     end
 
     def +(other)
@@ -316,6 +316,7 @@ EOS
   end
 
   class Closure
+    include Atom
     include HasArgList
 
     def initialize(symbols, form, bindings, name)
@@ -353,6 +354,7 @@ EOS
   end
 
   class Macro
+    include Atom
     include HasArgList
 
     def initialize(symbols, form, name)
@@ -497,6 +499,8 @@ EOS
   end
 
   module Builtin
+    include Atom
+
     def initialize(name, nargs, &block)
       @name = name
       @nargs = nargs
