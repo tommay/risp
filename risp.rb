@@ -328,7 +328,7 @@ EOS
       @name = name || form.inspect
     end
 
-    def eval(args)
+    def apply(args)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
         bindings = bind_symbols_to_args(@bindings, @symbols, args)
         Risp.eval(@form, bindings)
@@ -364,7 +364,7 @@ EOS
       @name = name || form.inspect
     end
 
-    def eval(args, bindings)
+    def apply(args, bindings)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
         # We are using the caller's bindings, this is so quasiquote, which
         # is a macro, has access to the caller's bindings.  Probably
@@ -503,7 +503,7 @@ EOS
       @block = block
     end
 
-    def eval(args, bindings)
+    def apply(args, bindings)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
         if @nargs
           array = Risp::to_array(args, @nargs)
@@ -740,13 +740,13 @@ EOS
     args = dethunk(args)
     case fn
     when Fsubr
-      fn.eval(args, bindings)
+      fn.apply(args, bindings)
     when Subr
-      fn.eval(eval_list(args, bindings), bindings)
+      fn.apply(eval_list(args, bindings), bindings)
     when Closure
-      fn.eval(eval_list(args, bindings))
+      fn.apply(eval_list(args, bindings))
     when Macro
-      fn.eval(args, bindings)
+      fn.apply(args, bindings)
     else
       binding.pry if Risp.debug?
       raise Risp::Exception.new("Don't know how to apply #{fn.inspect}")
