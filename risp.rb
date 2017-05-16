@@ -329,7 +329,7 @@ EOS
       @name = name || form.inspect
     end
 
-    def apply(args)
+    def apply(args, _bindings = nil)
       Risp.trace(->{"#{@name}#{args.inspect}"}) do
         bindings = bind_symbols_to_args(@bindings, @symbols, args)
         Risp.eval(@form, bindings)
@@ -739,10 +739,17 @@ EOS
     end
   end
 
-  subr("apply", 2) do |fn, args, bindings|
+  subr_apply = subr("apply", 2) do |fn, args, bindings|
     fn = dethunk(fn)
     args = dethunk(args)
     case fn
+    when subr_apply
+      # This is really nasty but without this "when" an applied subr
+      # gets its arguments evaluated an extra time.
+      evalled_args = eval_list(args, bindings)
+      apply_fn = dethunk(car(evalled_args))
+      apply_args = car(cdr(evalled_args))
+      apply_fn.apply(apply_args, bindings)
     when Fsubr
       fn.apply(args, bindings)
     when Subr
