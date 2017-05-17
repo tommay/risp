@@ -113,6 +113,14 @@
    (t
     (cons (car lst) (take (- n 1) (cdr lst))))))
 
+(define (take-while pred lst)
+  (cond
+   ((null? lst) nil)
+   ((not (pred (car lst)))
+    nil)
+   (t
+    (cons (car lst) (take-while pred (cdr lst))))))
+
 ;; This streams but the foldr version is cooler.
 
 (define (_map fn lst)
@@ -165,6 +173,13 @@
    (t
     (cons (list (car a) (car b)) (zip (cdr a) (cdr b))))))
 
+(define (zipn &rest lists)
+  (cond
+   ((any? null? lists)
+    nil)
+   (t
+    (cons (map car lists) (apply zipn (map cdr lists))))))
+
 ;; This does not stream.
 
 (define (foldl fn accum lst)
@@ -194,3 +209,11 @@
 
 (define (all? pred list)
   (apply and (map pred list)))
+
+(define (repeat val)
+  (letrec ((fn (cons val fn))) fn))
+
+;; (const val) returns a function that always returns val.
+
+(define (const val)
+  (lambda (&rest ignore) val))
