@@ -16,4 +16,4 @@
 
 ;;        (t (error "Ill-formed: %s" `(for ,listspec ,exp)))))
 
-(for (x :in '(1 2 3)) (+ x 1))
+;; (for (x :in '(1 2 3)) (+ x 1))
