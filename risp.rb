@@ -295,6 +295,15 @@ EOS
       end
     end
 
+    def get_arity(symbols)
+      array = Risp::to_array(symbols)
+      if array.include?(Qrest)
+        Qnil
+      else
+        Number.new(array.length)
+      end
+    end
+
     def bind_symbols_to_args(bindings, symbols, args)
       case
       when symbols == Qnil && args == Qnil
@@ -327,6 +336,11 @@ EOS
       @form = form
       @bindings = bindings
       @name = name || form.inspect
+      @arity = get_arity(@symbols)
+    end
+
+    def arity
+      @arity
     end
 
     def apply(args, _bindings = nil)
@@ -505,6 +519,11 @@ EOS
       @name = name
       @nargs = nargs
       @block = block
+      @arity = @nargs ? Number.new(@nargs) : Qnil
+    end
+
+    def arity
+      @arity
     end
 
     def apply(args, bindings)
@@ -973,6 +992,15 @@ EOS
     # Note gensyms are not interned, so a gensym will be different
     # from anoy other Symbol even if they have the same name.
     Symbol.new("##{@gensym_count}")
+  end
+
+  subr("arity", 1) do |fn, bindings = nil|
+    if fn.respond_to?(:arity)
+      fn.arity
+    else
+      binding.pry if Risp.debug?
+      raise Risp::Exception.new("Can't get arity of #{fn.inspect}")
+    end
   end
 
   fsubr("lazy", 1) do |form, bindings|
