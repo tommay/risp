@@ -975,6 +975,12 @@ EOS
     Symbol.new("##{@gensym_count}")
   end
 
+  subr("load", 1) do |symbol, bindings = nil|
+    symbol = dethunk(symbol)
+    execute("#{symbol.name}.risp", true)
+    Qt
+  end
+
   subr("pry", 1) do |arg, bindings = nil|
     binding.pry
     arg
