@@ -975,6 +975,10 @@ EOS
     Symbol.new("##{@gensym_count}")
   end
 
+  fsubr("lazy", 1) do |form, bindings|
+    Thunk.new(form, bindings)
+  end
+
   subr("load", 1) do |symbol, bindings = nil|
     symbol = dethunk(symbol)
     execute("#{symbol.name}.risp", true)
