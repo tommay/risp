@@ -11,8 +11,9 @@
 
 ;; Note that we want to capture the values of the partial arguments at
 ;; the time the lambda is created then use them in the lambda so the
-;; lambda isn't recalculating them everhy time it's used.  That's what
-;; evalled-args captures.
+;; lambda isn't recalculating them everhy time its invoked.  So the
+;; lambda is created inside a let that evaluates the partial arguments
+;; and binds then to gensyms.
 
 (define-macro (partial func)
   (let* ((fn (eval (car func)))
@@ -20,16 +21,22 @@
 	 (arity (arity fn)))
     (cond
      ((null? arity)
-      (let ((gen-sym (gensym))
-	    (evalled-args (map eval args)))
-	`(lambda (&rest ,gen-sym)
-	   (apply ,fn (append ',evalled-args ,gen-sym)))))
+      (let ((lambda-sym (gensym)))
+	`(lambda (&rest ,lambda-sym)
+	   (apply ,fn (append ',(map eval args) ,lambda-sym)))))
      (t
-      (let* ((remaining (- arity (length args)))
-	     (gen-syms
-	      (map (lambda (_) (gensym)) (take remaining (repeat nil))))
-	     (evalled-args (map (lambda (x) (list 'quote (eval x))) args)))
-	`(lambda ,gen-syms
-	   (,fn ,@evalled-args ,@gen-syms)))))))
+      (let* ((partial-syms
+	      (map (lambda (_) (gensym)) args))
+	     (zipped-args (zip partial-syms args))
+	     (remaining (- arity (length args)))
+	     (lambda-syms
+	      (map (lambda (_) (gensym)) (take remaining (repeat nil)))))
+	`(let ,zipped-args
+	   (lambda ,lambda-syms (,fn ,@partial-syms ,@lambda-syms))))))))
 
 ;; (for (_ :in (take remaining (repeat nil))) (gensym))
+
+(define (/= a b) (not (eq a b)))
+
+(define (ne n) (partial (/= (+ n 1))))
+;=> (let ((#1 n)) (lambda (#2) (/= #1 #2)))
