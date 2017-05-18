@@ -5,27 +5,31 @@
 ;; This is more efficient with functions that take a fixed number of
 ;; arguments.
 ;;
-;; I'm not sure that capture of the arguments to the partially applied
-;; function is quite right.
-;;
 ;; Partially applied functions can themselves be used with partial.
 
 (load 'for)
 
+;; Note that we want to capture the values of the partial arguments at
+;; the time the lambda is created then use them in the lambda so the
+;; lambda isn't recalculating them everhy time it's used.  That's what
+;; evalled-args captures.
+
 (define-macro (partial func)
   (let* ((fn (eval (car func)))
-	 (args (map eval (cdr func)))
+	 (args (cdr func))
 	 (arity (arity fn)))
     (cond
      ((null? arity)
-      (let ((gensyms (list (gensym))))
-	`(lambda (&rest ,@gensyms) (apply ,fn (append ',args ,@gensyms)))))
+      (let ((gen-sym (gensym))
+	    (evalled-args (map eval args)))
+	`(lambda (&rest ,gen-sym)
+	   (apply ,fn (append ',evalled-args ,gen-sym)))))
      (t
       (let* ((remaining (- arity (length args)))
-	     (gensyms
-	      (map (lambda (_) (gensym)) (take remaining (repeat nil)))))
-	`(lambda ,gensyms (,fn ,@args ,@gensyms)))))))
+	     (gen-syms
+	      (map (lambda (_) (gensym)) (take remaining (repeat nil))))
+	     (evalled-args (map (lambda (x) (list 'quote (eval x))) args)))
+	`(lambda ,gen-syms
+	   (,fn ,@evalled-args ,@gen-syms)))))))
 
 ;; (for (_ :in (take remaining (repeat nil))) (gensym))
-
-(define (x a b c) (+ a b c))
