@@ -995,6 +995,7 @@ EOS
   end
 
   subr("arity", 1) do |fn, bindings = nil|
+    fn = dethunk(fn)
     if fn.respond_to?(:arity)
       fn.arity
     else
