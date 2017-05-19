@@ -11,6 +11,10 @@ scoped and uses `define` and `null?` but it has `t` and `nil` atoms
 and `cond` has no "else" clause.  There's probably more mish-mash as
 well.
 
+Variables are immutable, i.e., there are no side-effect functions
+other than define and define-macro which define top-level variables.
+.  Top-level variables can be redefined.
+
 Well.  Despite proving that their interpreter is strictly more
 powerful than McCarthy's interpreter because it can evaluate some
 things that would cause McCarthy to diverge, it turns out that "Cons
