@@ -13,7 +13,21 @@
 ;; the time the lambda is created then use them in the lambda so the
 ;; lambda isn't recalculating them everhy time its invoked.  So the
 ;; lambda is created inside a let that evaluates the partial arguments
-;; and binds then to gensyms.
+;; and binds them to gensyms.  It seems like we should be able to
+;; inline them as quoted values but I haven't been able to figure out
+;; how to do that, not even with the map/eval trick used below.
+;;
+;; Further note that in the (null? arity) case it doesn't work to just
+;; map eval over the args.  Consider:
+;;
+;; (define (plus-n n) (partial (+ (+ n 0))))
+;;
+;; We want to evaluate (+ n 0) when (plus-n ...) is called and bake it
+;; into plus-n's return value which is the lambda created by partial.
+;; (map eval ...) will call eval with map's environment but we need
+;; the function's environment with its binding for n.  (map (lambda
+;; (e) (eval e)) ...) does this because the lambda closes over the
+;; function's bindings.
 
 (define-macro (partial func)
   (let* ((fn (eval (car func)))
@@ -21,9 +35,11 @@
 	 (arity (arity fn)))
     (cond
      ((null? arity)
-      (let ((lambda-sym (gensym)))
-	`(lambda (&rest ,lambda-sym)
-	   (apply ,fn (append ',(map eval args) ,lambda-sym)))))
+      (let ((partial-sym (gensym))
+	    (lambda-sym (gensym)))
+	`(let ((,partial-sym (map (lambda (e) (eval e)) ',args)))
+	   (lambda (&rest ,lambda-sym)
+	     (apply ,fn (append ,partial-sym ,lambda-sym))))))
      (t
       (let* ((partial-syms
 	      (map (lambda (_) (gensym)) args))
@@ -36,7 +52,6 @@
 
 ;; (for (_ :in (take remaining (repeat nil))) (gensym))
 
-(define (/= a b) (not (eq a b)))
-
-(define (ne n) (partial (/= (+ n 1))))
+;(define (/= a b) (not (eq a b)))
+;(define (ne n) (partial (/= (+ n 0))))
 ;=> (let ((#1 n)) (lambda (#2) (/= #1 #2)))
