@@ -3,7 +3,7 @@
       ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
     maker))
 
-;; Here are some simpler definitions for infinte number lists to make
+;; Here are some simpler definitions for infinite number lists to make
 ;; it easier to find code problems.
 
 (and
@@ -18,12 +18,24 @@
    (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
  'not-printed)
 
+(and
+ lazy?
+ (define (numbers2 first)
+   (cons first (numbers2 (+ first 1))))
+ 'not-printed)
+
 ;; And even simpler:
 
 (and
  lazy?
  (define ones
    (cons 1 ones))
+ 'not-printed)
+
+(and
+ lazy?
+ (define (alternate a b)
+   (cons a (alternate b a)))
  'not-printed)
 
 (define (factorial n)
