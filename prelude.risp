@@ -46,10 +46,10 @@
 ;; the quasiquote will be handled on the spot and do-macros
 ;; returns (define-macro (p1 n) (+ n 1)) which is not what
 ;; we want.  Clearly we don't want do-macros to evaluate the
-;; quasiuote.   Also if we want to be able to redefine p1 then
-;  so-macros can't expand p1 in the argument list.
+;; quasiquote.   Also if we want to be able to redefine p1 then
+;  do-macros can't expand p1 in the argument list.
 ;; The solution for now is just don't expand macros within a
-;; define-macro.  Note that this code treats define-macro as
+;; define-macro.  So this code treats define-macro as
 ;; quote anywhere in the form.
 
 (define (do-macros form)
@@ -84,8 +84,8 @@
 ;; But when this clause matches and runs:
 ;;   ((eq (car form) 'unquote)
 ;;    (eval (car (cdr form))))
-;; form is bound to "(unqute form)" from the simple macro and
-;; (car (cdr form)) is "form" so we fo (eval form) which returns
+;; form is bound to "(unquote form)" from the simple macro and
+;; (car (cdr form)) is "form" then we do (eval form) which returns
 ;; the binding of form from quasiquote not from simple.  The workaround
 ;; is to call "form" something more unusual in quasiquote so there
 ;; hopefully won't be collisions.  Or quasiquote could be done in ruby.
@@ -121,7 +121,10 @@
    (t
     (cons (car lst) (take-while pred (cdr lst))))))
 
-;; This streams but the foldr version is cooler.
+;; _map and _filter are simple reursive implementations which stream,
+;; but the versions defined wirh higher-order functions are cooler,
+;; for some definition of cool.  These ones have the virtue of being
+;; easy to understand and simple to evaluate.
 
 (define (_map fn lst)
   (cond
@@ -142,6 +145,8 @@
 
 (define (length lst)
   (foldr (lambda (_ tail) (+ 1 tail)) 0 lst))
+
+;; Two versions of flatten, one using manual recursion and one using foldr.
 
 (define (flatten lst)
   (cond
@@ -180,7 +185,7 @@
    (t
     (cons (map car lists) (apply zipn (map cdr lists))))))
 
-;; This does not stream.
+;; This does not stream.  foldl just doesn't.
 
 (define (foldl fn accum lst)
   (cond
@@ -199,7 +204,8 @@
    (t
     (and (equal (car a) (car b)) (equal (cdr a) (cdr b))))))
 
-;; This only works right with lazy evaluation.
+;; This only works right with lazy evaluation, because it must
+;; evaluate either "then" or "else", not both, in case one diverges.
 
 (define (if bool then else)
   (cond (bool then) (t else)))
@@ -210,10 +216,17 @@
 (define (all? pred list)
   (apply and (map pred list)))
 
-(define (repeat val)
-  (letrec ((fn (cons val (lazy fn)))) fn))
+;; Two versions of repeat.  Why did I ever define it the first way?
+;; Maybe so it works regardless of whether lazy is the default to it
+;; can be used in partial.risp.  Ok, but why use letrec?
 
-;; (const val) returns a function that always returns val.
+;;(define (repeat val)
+;;  (letrec ((fn (cons val (lazy fn)))) fn))
+
+(define (repeat val) (cons val (lazy (repeat val))))
+
+;; (const val) returns a function that always returns val no matter
+;; what if anything it is passed.
 
 (define (const val)
   (lambda (&rest ignore) val))
