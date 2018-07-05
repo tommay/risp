@@ -3,40 +3,36 @@
       ((maker (cons first (map (lambda (n) (+ n 1)) maker))))
     maker))
 
+;; This file defines some symbols to infinite series.  Since define
+;; computes the result and prints it we should onlu make those
+;; definitions if evaluation is lazy, so if-lazy is a macro to make
+;; that easy and obvious.
+
+(define-macro (if-lazy form)
+  `(and lazy? ,form 'not-lazy))
+
 ;; Here are some simpler definitions for infinite number lists to make
 ;; it easier to find code problems.
 
-(and
- lazy?
+(if-lazy
  (define numbers1
-   (cons 1 (map (lambda (n) (+ n 1)) numbers1)))
- 'not-printed)
+   (cons 1 (map (lambda (n) (+ n 1)) numbers1))))
 
-(and
- lazy?
+(if-lazy
  (define numbers1a
-   (cons 1 (_map (lambda (n) (+ n 1)) numbers1a)))
- 'not-printed)
+   (cons 1 (_map (lambda (n) (+ n 1)) numbers1a))))
 
-(and
- lazy?
- (define (numbers2 first)
-   (cons first (numbers2 (+ first 1))))
- 'not-printed)
+(define (numbers2 first)
+ (cons first (numbers2 (+ first 1))))
 
 ;; And even simpler:
 
-(and
- lazy?
+(if-lazy
  (define ones
-   (cons 1 ones))
- 'not-printed)
+   (cons 1 ones)))
 
-(and
- lazy?
- (define (alternate a b)
-   (cons a (alternate b a)))
- 'not-printed)
+(define (alternate a b)
+ (cons a (alternate b a)))
 
 (define (factorial n)
   (apply * (take n (numbers 1))))
@@ -50,17 +46,13 @@
 ;; Fake things out so the defines are evaluated but not printed, since
 ;; they create infinite lists.
 
-(and
- lazy?
+(if-lazy
  (define evens
-   (cons 0 (map (lambda (a) (+ a 2)) evens)))
- 'not-printed)
+   (cons 0 (map (lambda (a) (+ a 2)) evens))))
 
-(and
- lazy?
+(if-lazy
  (define evens2
-   (map (lambda (a) (+ a 2)) (cons 0 evens2)))
- 'not-printed)
+   (map (lambda (a) (+ a 2)) (cons 0 evens2))))
 
 ;; factorial using the Y combinator:
 
