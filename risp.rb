@@ -787,6 +787,8 @@ EOS
     null?(arg)
   end
 
+  # This can't use fold_left because it neds to short-circuit.
+  #
   fsubr("and", nil, :f_and) do |args, bindings|
     trampoline do
       _and(args, bindings)
@@ -816,6 +818,8 @@ EOS
     end
   end
 
+  # This can't use fold_left because it neds to short-circuit.
+  #
   fsubr("or", nil, :f_or) do |args, bindings|
     trampoline do
       _or(args, bindings)
@@ -848,6 +852,10 @@ EOS
     end
   end
 
+  # This is trickier than "+" because if there is one argument then it
+  # is negated, otherwise all the other arguments are subtracted from
+  # the first.
+  #
   fsubr("-") do |list, bindings|
     list = dethunk(list)
     case list
