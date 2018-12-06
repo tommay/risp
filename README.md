@@ -36,13 +36,13 @@ This works great.  The only (I think) problem being ruby's (MRI 2.4.0)
 lack of tail-call optimization so trying to print an infinite list,
 even though it's done incrementally, will blow the stack.
 
-Update: I've tried using trampolines and they don't seem to fix the
-memory problem.  Perhpaps it has to do with risp creating an
-evaluation tree instead of an evaluation graph.  Somewhere here there
-is risp, Haskell, and Frege code where both risp and Frege have the
-memory problem but Haskell does not, IIRC it's a zip/filter example
-but I could be wrong.  That's a good place to start looking into
-things.
+Update: I've tried using trampolines to do tail recursion without
+blowing the stack and they don't seem to fix the memory problem.
+Perhaps it has to do with risp creating an evaluation tree instead of
+an evaluation graph.  Somewhere here there is risp, Haskell, and Frege
+code where both risp and Frege have the memory problem but Haskell
+does not, IIRC it's a zip/filter example but I could be wrong.  That's
+a good place to start looking into things.
 
 Or consider this code:
 ones = 1 : ones
@@ -55,7 +55,7 @@ for each invocation of "ones".
 
 It's just not the right place to create thunks.  It only creates
 thunks on `cons`.  But not everything `cons`es.  A lot of things work,
-but some didn't.
+but some don't.
 
 Consider an infinite list of atoms:
 
@@ -76,8 +76,9 @@ But this blew the stack:
 (zip '(1) (filter (lambda (n) (eq n 'other)) (cons 'other (atoms))))
 ~~~~
 
-The `filter` should produce `(other)` and the result should be
-`((1 other))`.  But `filter`:
+The `filter` should produce `(other ...)` and the result should be
+`((1 other))`.  Since the first list has only one element, only one element
+from the second list should be retrieved.  But `filter`, which is:
 
 ~~~~
 (define (filter pred lst)
@@ -97,7 +98,7 @@ McCarthy's lisp, it doesn't have `define` and uses `atom` to test for
 empty list, and it has dynamic scoping.  Here's the actual failing
 code for that branch where zip, filter, and atoms are created as
 lambda expressions that call themselves recursively through their
-dynamically scoped bindings and passed into a lambda that does the
+dynamically scoped bindings then passed into a lambda that does the
 actual zip/filter expression:
 
 ~~~~
@@ -127,8 +128,9 @@ running forever.  For example, this runs correctly:
 ----
 
 but if the arguments are reversed then zip diverges since filtering an
-infinite list gives an infinite list and zip doesn't know it's ok to end.
-However, it will blow the stack.
+infinite list gives an infinite list and zip will never terminate,
+even though it would be fine if it did since the second list is
+finite.  However, it will blow the stack.
 
 Haskell also diverges in the same case, but doesn't blow the stack:
 
@@ -143,15 +145,17 @@ zip (filter (==4) evens) ["a"]
 I think blowing the stack is due to a lack of tail-call optimization.
 I could possibly use trampolines to get around this.
 
-Update: I tried trampolines and that didn't help.  It may be an issue of
-expression tree vs. expression graph.
+Update: I tried trampolines (commit 8fb6c578187beb89baeb0865a26845b81e98bd7e) and that didn't help.  It may be an issue of expression tree vs. expression graph.
 
 ## Problems
 
 ### Some things that don't diverge blow the stack:
 
+All of these blow the stack.
+
 ~~~~
 (load 'numbers)
+(nth 1000000000 ones)
 (nth 1000 numbers1)
 (nth 1000 numbers1a)
 (nth 1000 (numbers 1))
@@ -195,8 +199,3 @@ to iteration or trampolines so they can handle arbitrarily long
 lists such as `(all? ...)` or `(any? ...)` might want.
 
 Update: this has been done in commit be3a47a475a49c6434a2133b75b88860b4a827eb.
-
------
-
-(and (define ones (cons 1 ones)) 33)
-(nth 1000000000 ones) ;; Blows the stack.
