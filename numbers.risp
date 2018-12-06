@@ -4,7 +4,7 @@
     maker))
 
 ;; This file defines some symbols to infinite series.  Since define
-;; computes the result and prints it we should onlu make those
+;; computes the result and prints it we should only make those
 ;; definitions if evaluation is lazy, so if-lazy is a macro to make
 ;; that easy and obvious.
 
