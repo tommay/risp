@@ -6,20 +6,21 @@ was modified to put "suspensions" in the `car` and `cdr` of newly
 allocated cells and `car`/`cdr` would evaluate the suspensions.  The
 hope being to get lazy evaluation.
 
-This dialect is a mish-mash of scheme and emacs-lisp.  It is lexically
-scoped and uses `define` and `null?` but it has `t` and `nil` atoms
-and `cond` has no "else" clause.  There's probably more mish-mash as
-well.
+This lisp dialect is a mish-mash of scheme and emacs-lisp.  It is
+lexically scoped and uses `define` and `null?` but it has `t` and
+`nil` atoms and `cond` has no "else" clause.  There's probably more
+mish-mash as well.  Doing everything the scheme way would be better
+but this was faster/easier to write.
 
 Variables are immutable, i.e., there are no side-effect functions
 other than define and define-macro which define top-level variables.
-.  Top-level variables can be redefined.
+Top-level variables can be redefined.
 
 Well.  Despite proving that their interpreter is strictly more
 powerful than McCarthy's interpreter because it can evaluate some
 things that would cause McCarthy to diverge, it turns out that "Cons
-should not evaluate its arguments" is not powerful enough, and that
-...
+should not evaluate its arguments" is not powerful enough.  What seems
+to be needed is the idea in the next section.
 
 ## Eval should not evaluate its arguments
 
@@ -35,7 +36,22 @@ This works great.  The only (I think) problem being ruby's (MRI 2.4.0)
 lack of tail-call optimization so trying to print an infinite list,
 even though it's done incrementally, will blow the stack.
 
-## What's wrong with cons whould not evaluate its arguments?
+Update: I've tried using trampolines and they don't seem to fix the
+memory problem.  Perhpaps it has to do with risp creating an
+evaluation tree instead of an evaluation graph.  Somewhere here there
+is risp, Haskell, and Frege code where both risp and Frege have the
+memory problem but Haskell does not, IIRC it's a zip/filter example
+but I could be wrong.  That's a good place to start looking into
+things.
+
+Or consider this code:
+ones = 1 : ones
+(define ones (cons 1 ones))
+
+In risp, evaluating the tree will create a new Thunk with new bindings
+for each invocation of "ones".
+
+## What's wrong with cons should not evaluate its arguments?
 
 It's just not the right place to create thunks.  It only creates
 thunks on `cons`.  But not everything `cons`es.  A lot of things work,
@@ -79,7 +95,10 @@ called `cons` again and therefore would never return.
 Since risp.rb in the cons-does-not-evaluate branch is very close to
 McCarthy's lisp, it doesn't have `define` and uses `atom` to test for
 empty list, and it has dynamic scoping.  Here's the actual failing
-code:
+code for that branch where zip, filter, and atoms are created as
+lambda expressions that call themselves recursively through their
+dynamically scoped bindings and passed into a lambda that does the
+actual zip/filter expression:
 
 ~~~~
 ((lambda (zip filter atoms)
@@ -118,29 +137,34 @@ evens = map (+2) (0 : evens)
 zip ["a"] (filter (==4) evens)
 => [("a",4)]
 zip (filter (==4) evens) ["a"]
-[(4,"a")   runs forever
+[(4,"a")  -- runs forever
 ~~~~
 
 I think blowing the stack is due to a lack of tail-call optimization.
 I could possibly use trampolines to get around this.
+
+Update: I tried trampolines and that didn't help.  It may be an issue of
+expression tree vs. expression graph.
 
 ## Problems
 
 ### Some things that don't diverge blow the stack:
 
 ~~~~
-(nth 100 numbers1)
-(nth 100 numbers1a)
-(nth 100 (numbers 1))
+(load 'numbers)
+(nth 1000 numbers1)
+(nth 1000 numbers1a)
+(nth 1000 (numbers 1))
 ~~~~
 
 I've used a trampoline so arbitrarily long thunk/memo chains can be
-dethunked but the problem is more insidious.
+dethunked but the problem is more insidious.  The thunks/bindings become
+arbitrarily large.
 
 ### Thunk memos blow the heap
 
 Thunk memos can make arbitrarily long chains and blow the heap because
-the are strongly referenced.  `WeakRef` doesn't help because the
+they are strongly referenced.  `WeakRef` doesn't help because the
 `WeakRef`s are aggressively garbage collected and don't live long enough
 to be effective.  SoftReferences are what's needed.  See commit
 6f9bd3a268fa8afd0837fc8cbdf8c1932bbd825f.
@@ -169,3 +193,10 @@ If/when everything works nicely and infinite lists don't cause
 problems, `and` and `or` should be changed from tail recursion
 to iteration or trampolines so they can handle arbitrarily long
 lists such as `(all? ...)` or `(any? ...)` might want.
+
+Update: this has been done in commit be3a47a475a49c6434a2133b75b88860b4a827eb.
+
+-----
+
+(and (define ones (cons 1 ones)) 33)
+(nth 1000000000 ones) ;; Blows the stack.
