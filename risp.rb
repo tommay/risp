@@ -4,13 +4,13 @@ require "bundler/setup"
 require "hamster/hash"
 require "readline"
 require "readline/history/restore"
-require "trollop"
+require "optimist"
 require "pry-byebug"
 
 Readline::History::Restore.new(File.expand_path("~/.risp_history"))
 
 module Risp
-  @options = Trollop::options do
+  @options = Optimist::options do
     banner <<EOS
 Usage: #{$0} [options] [file...]
 Run the risp repl to interpret my tiny lisp dialect with lazy evaluation.

@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gem "hamster"
 gem "readline-history-restore"
-gem "trollop"
+gem "optimist"
 
 group :development do
   gem "pry-byebug"

@@ -7,6 +7,7 @@ GEM
     hamster (3.0.0)
       concurrent-ruby (~> 1.0)
     method_source (0.8.2)
+    optimist (3.0.0)
     pry (0.10.4)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
@@ -16,16 +17,15 @@ GEM
       pry (~> 0.10)
     readline-history-restore (0.0.1)
     slop (3.6.0)
-    trollop (2.1.2)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   hamster
+  optimist
   pry-byebug
   readline-history-restore
-  trollop
 
 BUNDLED WITH
-   1.14.4
+   1.16.6
