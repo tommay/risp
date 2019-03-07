@@ -6,6 +6,12 @@ was modified to put "suspensions" in the `car` and `cdr` of newly
 allocated cells and `car`/`cdr` would evaluate the suspensions.  The
 hope being to get lazy evaluation.
 
+I found out that doesn't make everything lazy because not everything
+is in a `cons` cell and accessed with `car` and `cdr`.  It should be
+"Eval should not evaluate its argument".
+
+## Miscelleous
+
 This lisp dialect is a mish-mash of scheme and emacs-lisp.  It is
 lexically scoped and uses `define` and `null?` but it has `t` and
 `nil` atoms and `cond` has no "else" clause.  There's probably more
