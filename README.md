@@ -98,8 +98,8 @@ McCarthy's lisp, it doesn't have `define` and uses `atom` to test for
 empty list, and it has dynamic scoping.  Here's the actual failing
 code for that branch where zip, filter, and atoms are created as
 lambda expressions that call themselves recursively through their
-dynamically scoped bindings then passed into a lambda that does the
-actual zip/filter expression:
+dynamically scoped bindings then are passed into a lambda that does
+the actual zip/filter expression:
 
 ~~~~
 ((lambda (zip filter atoms)
@@ -123,23 +123,26 @@ A lot of things that diverge will blow the stack instead of just
 running forever.  For example, this runs correctly:
 
 ~~~~
+(define evens
+  (cons 0 (map (lambda (a) (+ a 2)) evens)))
+
 (zip '(a) (filter (lambda (n) (eq n 4)) evens))
 => ((a 4))
-----
+~~~~
 
-but if the arguments are reversed then zip diverges since filtering an
-infinite list gives an infinite list and zip will never terminate,
-even though it would be fine if it did since the second list is
-finite.  However, it will blow the stack.
+but if the arguments to zip are reversed then zip diverges since
+filtering an infinite list gives an infinite list and zip will never
+terminate, even though it would be fine if it did since the second
+list is finite.  However, it will blow the stack.
 
 Haskell also diverges in the same case, but doesn't blow the stack:
 
 ~~~~
 evens = map (+2) (0 : evens)
-zip ["a"] (filter (==4) evens)
+zip ["a"] (filter (== 4) evens)
 => [("a",4)]
-zip (filter (==4) evens) ["a"]
-[(4,"a")  -- runs forever
+zip (filter (== 4) evens) ["a"]
+=> [(4,"a")  -- then runs forever
 ~~~~
 
 I think blowing the stack is due to a lack of tail-call optimization.
