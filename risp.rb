@@ -787,7 +787,7 @@ EOS
     null?(arg)
   end
 
-  # This can't use fold_left because it neds to short-circuit.
+  # This can't use fold_left because it needs to short-circuit.
   #
   fsubr("and", nil, :f_and) do |args, bindings|
     trampoline do
@@ -818,7 +818,7 @@ EOS
     end
   end
 
-  # This can't use fold_left because it neds to short-circuit.
+  # This can't use fold_left because it needs to short-circuit.
   #
   fsubr("or", nil, :f_or) do |args, bindings|
     trampoline do
