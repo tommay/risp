@@ -4,6 +4,8 @@
 
 (define nil 'nil)
 
+(define (id x) x)
+
 ;; This streams, e.g., to implement map and append.
 
 (define (foldr fn tail lst)
