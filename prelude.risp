@@ -232,3 +232,8 @@
 
 (define (const val)
   (lambda (&rest ignore) val))
+
+;; Like Haskell cycle: (cycle (a b c)) => (a b c a b c a ...).
+
+(define (cycle lst)
+  (append lst (lazy (cycle lst))))
