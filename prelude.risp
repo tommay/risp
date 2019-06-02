@@ -219,7 +219,7 @@
   (apply and (map pred list)))
 
 ;; Two versions of repeat.  Why did I ever define it the first way?
-;; Maybe so it works regardless of whether lazy is the default to it
+;; Maybe so it works regardless of whether lazy is the default so it
 ;; can be used in partial.risp.  Ok, but why use letrec?
 
 ;;(define (repeat val)
