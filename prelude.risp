@@ -35,7 +35,8 @@
 ;; This streams, just like the definition above.
 
 (define (append a b)
-  (foldr (lambda (e tail) (cons e tail)) b a))
+  (foldr cons b a))
+; (foldr (lambda (e tail) (cons e tail)) b a))
 
 ;; The repl calls do-macros on the form before evaluating it.  Put
 ;; this first so it can be used for everything else.
