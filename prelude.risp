@@ -238,3 +238,6 @@
 
 (define (cycle lst)
   (append lst (lazy (cycle lst))))
+
+(define (concat lists)
+  (foldr (lambda (e tail) (append e tail)) () lists))
