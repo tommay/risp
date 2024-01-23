@@ -310,7 +310,7 @@ EOS
         bindings
       when symbols == Qnil
         binding.pry if ::Risp.debug?
-        raise ::Risp::Exception.new("Too many arguments or #{@name}")
+        raise ::Risp::Exception.new("Too many arguments to #{@name}")
       when ::Risp.car(symbols) == Qrest
         bindings.bind(::Risp.car(::Risp.cdr(symbols)), args)
       when args == Qnil
