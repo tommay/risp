@@ -14,6 +14,6 @@
                ,(caddr listspec)))
         (t wtf))) 
 
-;;        (t (error "Ill-formed: %s" `(for ,listspec ,exp)))))
+;;        (t (error "Malformed: %s" `(for ,listspec ,exp)))))
 
 ;; (for (x :in '(1 2 3)) (+ x 1))

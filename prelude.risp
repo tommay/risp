@@ -125,7 +125,7 @@
     (cons (car lst) (take-while pred (cdr lst))))))
 
 ;; _map and _filter are simple reursive implementations which stream,
-;; but the versions defined wirh higher-order functions are cooler,
+;; but the versions defined with higher-order functions are cooler,
 ;; for some definition of cool.  These ones have the virtue of being
 ;; easy to understand and simple to evaluate.
 
