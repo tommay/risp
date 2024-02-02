@@ -234,10 +234,26 @@
 (define (const val)
   (lambda (&rest ignore) val))
 
-;; Like Haskell cycle: (cycle (a b c)) => (a b c a b c a ...).
+;; Like Haskell cycle: (cycle '(a b c)) => (a b c a b c a ...).
 
 (define (cycle lst)
   (append lst (lazy (cycle lst))))
 
 (define (concat lists)
   (foldr (lambda (e tail) (append e tail)) () lists))
+
+(define (replicate n thing)
+  (cond
+   ((eq n 0) ())
+   (t
+    (cons thing (replicate (- n 1) thing)))))
+
+(define (flip fn) (lambda (a b) (fn b a)))
+
+(define (scanl fn accum lst)
+  (cond
+   ((null? lst)
+    (list accum))
+   (t
+    (cons accum
+      (scanl fn (fn (car lst) accum) (cdr lst))))))
